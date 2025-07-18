@@ -88,7 +88,7 @@ export const CustomSlider: React.FC<CustomSliderProps> = ({
         onPress={handleTrackPress}
         activeOpacity={1}
         disabled={disabled}>
-        <View style={[styles.track, {backgroundColor: maximumTrackTintColor}]}>
+        <View style={[styles.track, {backgroundColor: maximumTrackTintColor}]} testID="slider-track">
           <View
             style={[
               styles.minimumTrack,
@@ -97,6 +97,7 @@ export const CustomSlider: React.FC<CustomSliderProps> = ({
                 backgroundColor: minimumTrackTintColor, 
               }
             ]}
+            testID="slider-minimum-track"
           />
         </View>
         <View
@@ -109,6 +110,7 @@ export const CustomSlider: React.FC<CustomSliderProps> = ({
               opacity: disabled ? 0.5 : 1,
             }
           ]}
+          testID="slider-thumb"
           {...panResponder.panHandlers}
         />
       </TouchableOpacity>
