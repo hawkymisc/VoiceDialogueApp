@@ -1,109 +1,81 @@
 // Dialogue and conversation-related type definitions
 
-export type EmotionType =
-  | 'joy'
-  | 'sadness'
-  | 'anger'
-  | 'surprise'
-  | 'fear'
+export type EmotionState =
   | 'neutral'
-  | 'embarrassed'
-  | 'excited';
+  | 'happy'
+  | 'sad'
+  | 'angry'
+  | 'surprised'
+  | 'embarrassed';
 
-export type ScenarioType =
-  | 'daily-conversation'
-  | 'work-scene'
-  | 'special-event'
-  | 'emotional-scene'
-  | 'comedy-scene'
-  | 'romantic-scene';
+export type DialogueCategory =
+  | 'daily'
+  | 'work'
+  | 'romance'
+  | 'comedy'
+  | 'drama'
+  | 'special';
 
-export interface EmotionState {
-  primary: EmotionType;
-  intensity: number; // 0-1
-  secondary?: EmotionType;
-  confidence: number; // 0-1
+export type DifficultyLevel = 'easy' | 'medium' | 'hard';
+
+export interface ContextSettings {
+  timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'night' | 'work-hours' | 'any';
+  location?: 'home' | 'office' | 'outside' | 'private' | 'public' | 'any';
+  mood?: 'neutral' | 'happy' | 'sad' | 'serious' | 'romantic' | 'nervous' | 'tired' | 'relaxed' | 'embarrassed' | 'conflicted' | 'hopeful' | 'confused' | 'friendly' | 'tense';
 }
 
 export interface DialogueMessage {
   id: string;
-  speakerId: string;
   text: string;
-  emotion: EmotionType;
-  timestamp: Date;
+  sender: 'user' | 'character';
+  timestamp: number;
+  emotion: EmotionState;
   audioUrl?: string;
-  metadata: {
-    scenario: ScenarioType;
-    context: string[];
+  metadata?: {
+    scenario?: string;
+    context?: string[];
     userRating?: number;
     isFavorite?: boolean;
   };
 }
 
-export interface ConversationContext {
-  recentMessages: DialogueMessage[];
-  currentMood: EmotionType;
-  relationshipLevel: number; // 0-100
-  scenarioState: ScenarioState;
-  userPreferences: DialogueUserPreferences;
-}
-
-export interface ScenarioState {
-  currentScenario: ScenarioType;
-  progress: number; // 0-100
-  availableActions: string[];
-  contextVariables: Record<string, any>;
-}
-
-export interface Conversation {
+export interface DialogueScenario {
   id: string;
-  userId: string;
-  participants: string[]; // character IDs
+  category: DialogueCategory;
+  title: string;
+  description: string;
+  initialPrompt: string;
+  tags: string[];
+  difficulty: DifficultyLevel;
+  contextSettings?: ContextSettings;
+}
+
+export interface Dialogue {
+  id: string;
+  characterId: string;
+  scenario: DialogueScenario;
   messages: DialogueMessage[];
-  scenario: ScenarioType;
-  startTime: Date;
-  endTime?: Date;
-  metadata: {
-    totalMessages: number;
-    averageRating: number;
-    tags: string[];
-  };
+  startTime: number;
+  endTime: number | null;
+  emotionProgression: EmotionState[];
 }
 
-export interface ConversationHistory {
-  conversations: Conversation[];
-  totalCount: number;
-  favoriteConversations: string[]; // conversation IDs
-}
-
-export interface ConversationState {
-  currentConversation: Conversation | null;
-  conversationHistory: ConversationHistory;
-  isGenerating: boolean;
-  currentSpeaker: string | null;
-  availableScenarios: ScenarioType[];
+export interface DialogueState {
+  currentDialogue: Dialogue | null;
+  dialogueHistory: DialogueHistoryEntry[];
+  emotionState: EmotionState;
+  currentScenario: DialogueScenario | null;
+  isLoading: boolean;
   error: string | null;
 }
 
-// API request/response types for dialogue
-export interface DialogueRequest {
-  userId: string;
-  scenario: ScenarioType;
-  characters: string[]; // character IDs
-  context: ConversationContext;
-  userInput?: string;
+export interface DialogueHistoryEntry {
+  id: string;
+  characterId: string;
+  scenario: DialogueScenario;
+  startTime: number;
+  endTime: number;
+  messageCount: number;
+  emotionProgression: EmotionState[];
+  rating?: number;
 }
-
-export interface DialogueResponse {
-  message: DialogueMessage;
-  nextSpeaker: string;
-  suggestedActions: string[];
-  contextUpdate: Partial<ConversationContext>;
-}
-
-// UserPreferences is defined in User.ts - removing duplicate definition
-export type DialogueUserPreferences = {
-  favoriteScenarios: ScenarioType[];
-  preferredEmotions: EmotionType[];
-  conversationStyle: 'casual' | 'formal' | 'mixed';
-};

@@ -17,6 +17,8 @@ import {
   ScenarioType,
   ConversationState,
 } from '../types/Dialogue';
+import {VoicePlayer} from './VoicePlayer';
+import {CharacterType} from '../types/Character';
 
 const {width: screenWidth, height: screenHeight} = Dimensions.get('window');
 
@@ -24,6 +26,8 @@ export interface DialogueInterfaceProps {
   conversation: ConversationState;
   onUserInput: (input: string) => void;
   onScenarioSelect: (scenario: ScenarioType) => void;
+  currentCharacter: CharacterType;
+  autoPlayVoice?: boolean;
 }
 
 const SCENARIO_LABELS: Record<ScenarioType, string> = {
@@ -39,6 +43,8 @@ export const DialogueInterface: React.FC<DialogueInterfaceProps> = ({
   conversation,
   onUserInput,
   onScenarioSelect,
+  currentCharacter,
+  autoPlayVoice = true,
 }) => {
   const [inputText, setInputText] = useState('');
   const [showScenarios, setShowScenarios] = useState(false);
@@ -87,6 +93,7 @@ export const DialogueInterface: React.FC<DialogueInterfaceProps> = ({
           </Text>
         </View>
 
+        <Text
           style={[
             styles.messageText,
             isUser ? styles.userMessageText : styles.characterMessageText,
@@ -100,6 +107,25 @@ export const DialogueInterface: React.FC<DialogueInterfaceProps> = ({
             {item.metadata.isFavorite && (
               <Text style={styles.favoriteTag}>★</Text>
             )}
+          </View>
+        )}
+
+        {/* Voice Player for character messages */}
+        {!isUser && (
+          <View style={styles.voicePlayerContainer}>
+            <VoicePlayer
+              text={item.text}
+              characterId={currentCharacter}
+              emotion={item.emotion}
+              autoPlay={autoPlayVoice}
+              onPlaybackComplete={() => {
+                console.log('Voice playback completed for message:', item.id);
+              }}
+              onPlaybackError={(error) => {
+                console.error('Voice playback error:', error);
+              }}
+              style={styles.voicePlayer}
+            />
           </View>
         )}
       </View>
@@ -464,5 +490,14 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  voicePlayerContainer: {
+    marginTop: 8,
+  },
+  voicePlayer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 4,
   },
 });

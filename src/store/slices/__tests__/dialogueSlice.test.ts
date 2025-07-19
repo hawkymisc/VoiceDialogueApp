@@ -1,461 +1,350 @@
-import dialogueReducer, {
+import {configureStore} from '@reduxjs/toolkit';
+import dialogueSlice, {
   startDialogue,
   endDialogue,
   addMessage,
   updateEmotionState,
   setDialogueScenario,
-  setDialogueLoading,
-  clearDialogueError,
-  selectDialogueState,
-  selectCurrentDialogue,
-  selectDialogueHistory,
-  selectEmotionState,
-  selectDialogueScenario,
+  clearDialogueHistory,
+  removeDialogueFromHistory,
+  rateDialogue,
+  generateDialogueResponse,
+  loadDialogueHistory,
+  restoreConversation,
 } from '../dialogueSlice';
-import {DialogueState, DialogueMessage, EmotionState, DialogueScenario} from '../../../types/Dialogue';
+import {DialogueScenario, DialogueMessage} from '../../../types/Dialogue';
+import {openaiService} from '../../../services/openaiService';
+import {historyService} from '../../../services/historyService';
 
-describe('dialogueSlice', () => {
-  const initialState: DialogueState = {
-    currentDialogue: null,
-    dialogueHistory: [],
-    emotionState: 'neutral',
-    currentScenario: null,
-    isLoading: false,
-    error: null,
+// Mock services
+jest.mock('../../../services/openaiService');
+jest.mock('../../../services/historyService');
+
+describe('Dialogue Slice', () => {
+  const mockScenario: DialogueScenario = {
+    id: 'daily_morning',
+    category: 'daily',
+    title: '朝の挨拶',
+    description: '朝の何気ない会話',
+    initialPrompt: '今日も一日お疲れ様です。',
+    tags: ['morning', 'greeting'],
+    difficulty: 'easy',
   };
 
-  it('should return the initial state', () => {
-    expect(dialogueReducer(undefined, {type: 'unknown'})).toEqual(initialState);
+  const mockMessage: DialogueMessage = {
+    id: 'msg-1',
+    text: 'こんにちは',
+    sender: 'user',
+    timestamp: Date.now(),
+    emotion: 'neutral',
+  };
+
+  let store: ReturnType<typeof configureStore>;
+
+  beforeEach(() => {
+    store = configureStore({
+      reducer: {
+        dialogue: dialogueSlice,
+      },
+    });
+    jest.clearAllMocks();
   });
 
   describe('startDialogue', () => {
     it('should start a new dialogue', () => {
-      const characterId = 'aoi';
-      const scenario: DialogueScenario = {
-        id: 'daily_conversation',
-        category: 'daily',
-        title: '日常会話',
-        description: '普通の日常会話',
-        initialPrompt: 'おはよう',
-        tags: ['casual'],
-        difficulty: 'easy',
-      };
-
-      const actual = dialogueReducer(initialState, startDialogue({
-        characterId,
-        scenario,
-      }));
-
-      expect(actual.currentDialogue).toEqual({
-        id: expect.any(String),
-        characterId,
-        scenario,
-        messages: [],
-        startTime: expect.any(Number),
-        endTime: null,
-        emotionProgression: ['neutral'],
+      const action = startDialogue({
+        characterId: 'aoi',
+        scenario: mockScenario,
       });
-      expect(actual.isLoading).toBe(false);
-      expect(actual.error).toBeNull();
-    });
 
-    it('should reset emotion state when starting new dialogue', () => {
-      const stateWithEmotion = {
-        ...initialState,
-        emotionState: 'happy' as EmotionState,
-      };
+      store.dispatch(action);
+      const state = store.getState().dialogue;
 
-      const actual = dialogueReducer(stateWithEmotion, startDialogue({
-        characterId: 'shun',
-        scenario: {
-          id: 'work_scene',
-          category: 'work',
-          title: '仕事シーン',
-          description: '職場での会話',
-          initialPrompt: 'お疲れ様です',
-          tags: ['work'],
-          difficulty: 'medium',
-        },
-      }));
-
-      expect(actual.emotionState).toBe('neutral');
+      expect(state.currentDialogue).toBeTruthy();
+      expect(state.currentDialogue?.characterId).toBe('aoi');
+      expect(state.currentDialogue?.scenario).toEqual(mockScenario);
+      expect(state.currentDialogue?.messages).toHaveLength(0);
+      expect(state.currentDialogue?.emotionProgression).toEqual(['neutral']);
+      expect(state.emotionState).toBe('neutral');
+      expect(state.currentScenario).toEqual(mockScenario);
+      expect(state.error).toBeNull();
     });
   });
 
   describe('endDialogue', () => {
     it('should end current dialogue and add to history', () => {
-      const stateWithDialogue = {
-        ...initialState,
-        currentDialogue: {
-          id: 'test-dialogue',
-          characterId: 'aoi',
-          scenario: {
-            id: 'test',
-            category: 'daily',
-            title: 'Test',
-            description: 'Test dialogue',
-            initialPrompt: 'Hello',
-            tags: ['test'],
-            difficulty: 'easy',
-          },
-          messages: [
-            {
-              id: 'msg1',
-              text: 'Hello',
-              sender: 'user',
-              timestamp: Date.now(),
-              emotion: 'neutral',
-            },
-          ],
-          startTime: Date.now() - 60000,
-          endTime: null,
-          emotionProgression: ['neutral'],
-        },
-      };
+      // Start a dialogue first
+      store.dispatch(startDialogue({
+        characterId: 'aoi',
+        scenario: mockScenario,
+      }));
 
-      const actual = dialogueReducer(stateWithDialogue, endDialogue());
+      // Add some messages
+      store.dispatch(addMessage(mockMessage));
 
-      expect(actual.currentDialogue).toBeNull();
-      expect(actual.dialogueHistory).toHaveLength(1);
-      expect(actual.dialogueHistory[0]).toEqual({
-        ...stateWithDialogue.currentDialogue,
-        endTime: expect.any(Number),
-      });
+      // End the dialogue
+      store.dispatch(endDialogue());
+      const state = store.getState().dialogue;
+
+      expect(state.currentDialogue).toBeNull();
+      expect(state.currentScenario).toBeNull();
+      expect(state.dialogueHistory).toHaveLength(1);
+      expect(state.dialogueHistory[0].characterId).toBe('aoi');
+      expect(state.dialogueHistory[0].scenario).toEqual(mockScenario);
+      expect(state.dialogueHistory[0].messageCount).toBe(1);
+      expect(historyService.saveConversation).toHaveBeenCalled();
+      expect(historyService.addToHistory).toHaveBeenCalled();
     });
 
-    it('should not add to history if no current dialogue', () => {
-      const actual = dialogueReducer(initialState, endDialogue());
+    it('should not do anything if no current dialogue', () => {
+      store.dispatch(endDialogue());
+      const state = store.getState().dialogue;
 
-      expect(actual.currentDialogue).toBeNull();
-      expect(actual.dialogueHistory).toHaveLength(0);
+      expect(state.currentDialogue).toBeNull();
+      expect(state.dialogueHistory).toHaveLength(0);
     });
   });
 
   describe('addMessage', () => {
     it('should add message to current dialogue', () => {
-      const stateWithDialogue = {
-        ...initialState,
-        currentDialogue: {
-          id: 'test-dialogue',
-          characterId: 'aoi',
-          scenario: {
-            id: 'test',
-            category: 'daily',
-            title: 'Test',
-            description: 'Test dialogue',
-            initialPrompt: 'Hello',
-            tags: ['test'],
-            difficulty: 'easy',
-          },
-          messages: [],
-          startTime: Date.now(),
-          endTime: null,
-          emotionProgression: ['neutral'],
-        },
-      };
+      store.dispatch(startDialogue({
+        characterId: 'aoi',
+        scenario: mockScenario,
+      }));
 
-      const message: DialogueMessage = {
-        id: 'msg1',
-        text: 'Hello world',
-        sender: 'user',
-        timestamp: Date.now(),
-        emotion: 'happy',
-      };
+      store.dispatch(addMessage(mockMessage));
+      const state = store.getState().dialogue;
 
-      const actual = dialogueReducer(stateWithDialogue, addMessage(message));
-
-      expect(actual.currentDialogue!.messages).toHaveLength(1);
-      expect(actual.currentDialogue!.messages[0]).toEqual(message);
+      expect(state.currentDialogue?.messages).toHaveLength(1);
+      expect(state.currentDialogue?.messages[0]).toEqual(mockMessage);
     });
 
     it('should not add message if no current dialogue', () => {
-      const message: DialogueMessage = {
-        id: 'msg1',
-        text: 'Hello world',
-        sender: 'user',
-        timestamp: Date.now(),
-        emotion: 'happy',
-      };
+      store.dispatch(addMessage(mockMessage));
+      const state = store.getState().dialogue;
 
-      const actual = dialogueReducer(initialState, addMessage(message));
-
-      expect(actual.currentDialogue).toBeNull();
+      expect(state.currentDialogue).toBeNull();
     });
   });
 
   describe('updateEmotionState', () => {
-    it('should update emotion state', () => {
-      const newEmotion: EmotionState = 'happy';
-      const actual = dialogueReducer(initialState, updateEmotionState(newEmotion));
+    it('should update emotion state and add to progression', () => {
+      store.dispatch(startDialogue({
+        characterId: 'aoi',
+        scenario: mockScenario,
+      }));
 
-      expect(actual.emotionState).toBe(newEmotion);
+      store.dispatch(updateEmotionState('happy'));
+      const state = store.getState().dialogue;
+
+      expect(state.emotionState).toBe('happy');
+      expect(state.currentDialogue?.emotionProgression).toEqual(['neutral', 'happy']);
     });
 
-    it('should update emotion progression in current dialogue', () => {
-      const stateWithDialogue = {
-        ...initialState,
-        currentDialogue: {
-          id: 'test-dialogue',
-          characterId: 'aoi',
-          scenario: {
-            id: 'test',
-            category: 'daily',
-            title: 'Test',
-            description: 'Test dialogue',
-            initialPrompt: 'Hello',
-            tags: ['test'],
-            difficulty: 'easy',
-          },
-          messages: [],
-          startTime: Date.now(),
-          endTime: null,
-          emotionProgression: ['neutral'],
-        },
-      };
+    it('should update emotion state without current dialogue', () => {
+      store.dispatch(updateEmotionState('sad'));
+      const state = store.getState().dialogue;
 
-      const actual = dialogueReducer(stateWithDialogue, updateEmotionState('happy'));
-
-      expect(actual.emotionState).toBe('happy');
-      expect(actual.currentDialogue!.emotionProgression).toEqual(['neutral', 'happy']);
+      expect(state.emotionState).toBe('sad');
+      expect(state.currentDialogue).toBeNull();
     });
   });
 
   describe('setDialogueScenario', () => {
     it('should set current scenario', () => {
-      const scenario: DialogueScenario = {
-        id: 'romance',
-        category: 'romance',
-        title: 'ロマンス',
-        description: 'ロマンチックなシーン',
-        initialPrompt: 'いい夜ですね',
-        tags: ['romance', 'evening'],
-        difficulty: 'hard',
-      };
+      store.dispatch(setDialogueScenario(mockScenario));
+      const state = store.getState().dialogue;
 
-      const actual = dialogueReducer(initialState, setDialogueScenario(scenario));
-
-      expect(actual.currentScenario).toEqual(scenario);
+      expect(state.currentScenario).toEqual(mockScenario);
     });
   });
 
-  describe('setDialogueLoading', () => {
-    it('should set loading state', () => {
-      const actual = dialogueReducer(initialState, setDialogueLoading(true));
+  describe('clearDialogueHistory', () => {
+    it('should clear dialogue history', () => {
+      // Add some history first
+      store.dispatch(startDialogue({
+        characterId: 'aoi',
+        scenario: mockScenario,
+      }));
+      store.dispatch(endDialogue());
 
-      expect(actual.isLoading).toBe(true);
-    });
+      // Clear history
+      store.dispatch(clearDialogueHistory());
+      const state = store.getState().dialogue;
 
-    it('should clear error when setting loading', () => {
-      const stateWithError = {
-        ...initialState,
-        error: 'Some error',
-      };
-
-      const actual = dialogueReducer(stateWithError, setDialogueLoading(true));
-
-      expect(actual.isLoading).toBe(true);
-      expect(actual.error).toBeNull();
+      expect(state.dialogueHistory).toHaveLength(0);
+      expect(historyService.clearAllHistory).toHaveBeenCalled();
     });
   });
 
-  describe('clearDialogueError', () => {
-    it('should clear error state', () => {
-      const stateWithError = {
-        ...initialState,
-        error: 'Some error',
-      };
+  describe('removeDialogueFromHistory', () => {
+    it('should remove dialogue from history', () => {
+      // Add some history first
+      store.dispatch(startDialogue({
+        characterId: 'aoi',
+        scenario: mockScenario,
+      }));
+      store.dispatch(endDialogue());
 
-      const actual = dialogueReducer(stateWithError, clearDialogueError());
+      const dialogueId = store.getState().dialogue.dialogueHistory[0].id;
 
-      expect(actual.error).toBeNull();
+      // Remove from history
+      store.dispatch(removeDialogueFromHistory(dialogueId));
+      const state = store.getState().dialogue;
+
+      expect(state.dialogueHistory).toHaveLength(0);
+      expect(historyService.removeFromHistory).toHaveBeenCalledWith(dialogueId);
     });
   });
 
-  describe('selectors', () => {
-    const mockState = {
-      dialogue: {
-        currentDialogue: {
-          id: 'test-dialogue',
-          characterId: 'aoi',
-          scenario: {
-            id: 'test',
-            category: 'daily',
-            title: 'Test',
-            description: 'Test dialogue',
-            initialPrompt: 'Hello',
-            tags: ['test'],
-            difficulty: 'easy',
-          },
-          messages: [],
+  describe('rateDialogue', () => {
+    it('should rate dialogue in history', () => {
+      // Add some history first
+      store.dispatch(startDialogue({
+        characterId: 'aoi',
+        scenario: mockScenario,
+      }));
+      store.dispatch(endDialogue());
+
+      const dialogueId = store.getState().dialogue.dialogueHistory[0].id;
+
+      // Rate the dialogue
+      store.dispatch(rateDialogue({ dialogueId, rating: 5 }));
+      const state = store.getState().dialogue;
+
+      expect(state.dialogueHistory[0].rating).toBe(5);
+    });
+  });
+
+  describe('generateDialogueResponse', () => {
+    it('should generate dialogue response successfully', async () => {
+      const mockResponse = {
+        text: 'こんにちは！元気ですか？',
+        emotion: 'happy' as const,
+      };
+
+      (openaiService.generateDialogue as jest.Mock).mockResolvedValue(mockResponse);
+
+      store.dispatch(startDialogue({
+        characterId: 'aoi',
+        scenario: mockScenario,
+      }));
+
+      const action = generateDialogueResponse({
+        characterId: 'aoi',
+        userMessage: 'こんにちは',
+        conversationHistory: [],
+      });
+
+      await store.dispatch(action);
+      const state = store.getState().dialogue;
+
+      expect(state.isLoading).toBe(false);
+      expect(state.error).toBeNull();
+      expect(state.emotionState).toBe('happy');
+      expect(state.currentDialogue?.messages).toHaveLength(1);
+      expect(state.currentDialogue?.messages[0].text).toBe('こんにちは！元気ですか？');
+      expect(state.currentDialogue?.messages[0].sender).toBe('character');
+      expect(state.currentDialogue?.messages[0].emotion).toBe('happy');
+    });
+
+    it('should handle dialogue generation error', async () => {
+      (openaiService.generateDialogue as jest.Mock).mockRejectedValue(
+        new Error('API Error')
+      );
+
+      const action = generateDialogueResponse({
+        characterId: 'aoi',
+        userMessage: 'こんにちは',
+        conversationHistory: [],
+      });
+
+      await store.dispatch(action);
+      const state = store.getState().dialogue;
+
+      expect(state.isLoading).toBe(false);
+      expect(state.error).toBe('API Error');
+    });
+
+    it('should set loading state during generation', () => {
+      const action = generateDialogueResponse({
+        characterId: 'aoi',
+        userMessage: 'こんにちは',
+        conversationHistory: [],
+      });
+
+      store.dispatch(action);
+      const state = store.getState().dialogue;
+
+      expect(state.isLoading).toBe(true);
+      expect(state.error).toBeNull();
+    });
+  });
+
+  describe('loadDialogueHistory', () => {
+    it('should load dialogue history from service', async () => {
+      const mockHistory = [
+        {
+          id: 'hist-1',
+          characterId: 'aoi' as const,
+          scenario: mockScenario,
           startTime: Date.now(),
-          endTime: null,
-          emotionProgression: ['neutral'],
+          endTime: Date.now(),
+          messageCount: 5,
+          emotionProgression: ['neutral', 'happy'],
         },
-        dialogueHistory: [
-          {
-            id: 'old-dialogue',
-            characterId: 'shun',
-            scenario: {
-              id: 'old',
-              category: 'work',
-              title: 'Old',
-              description: 'Old dialogue',
-              initialPrompt: 'Hi',
-              tags: ['old'],
-              difficulty: 'medium',
-            },
-            messages: [],
-            startTime: Date.now() - 120000,
-            endTime: Date.now() - 60000,
-            emotionProgression: ['neutral', 'happy'],
-          },
-        ],
-        emotionState: 'happy' as EmotionState,
-        currentScenario: {
-          id: 'current',
-          category: 'daily',
-          title: 'Current',
-          description: 'Current scenario',
-          initialPrompt: 'Hello',
-          tags: ['current'],
-          difficulty: 'easy',
-        },
-        isLoading: false,
-        error: null,
-      },
-    };
+      ];
 
-    it('selectDialogueState should return dialogue state', () => {
-      expect(selectDialogueState(mockState)).toEqual(mockState.dialogue);
-    });
+      (historyService.loadDialogueHistory as jest.Mock).mockResolvedValue(mockHistory);
 
-    it('selectCurrentDialogue should return current dialogue', () => {
-      expect(selectCurrentDialogue(mockState)).toEqual(mockState.dialogue.currentDialogue);
-    });
+      const action = loadDialogueHistory();
+      await store.dispatch(action);
+      const state = store.getState().dialogue;
 
-    it('selectDialogueHistory should return dialogue history', () => {
-      expect(selectDialogueHistory(mockState)).toEqual(mockState.dialogue.dialogueHistory);
-    });
-
-    it('selectEmotionState should return emotion state', () => {
-      expect(selectEmotionState(mockState)).toEqual(mockState.dialogue.emotionState);
-    });
-
-    it('selectDialogueScenario should return current scenario', () => {
-      expect(selectDialogueScenario(mockState)).toEqual(mockState.dialogue.currentScenario);
-    });
-
-    it('selectors should handle null values', () => {
-      const stateWithNulls = {
-        dialogue: {
-          ...initialState,
-          currentDialogue: null,
-          currentScenario: null,
-        },
-      };
-
-      expect(selectCurrentDialogue(stateWithNulls)).toBeNull();
-      expect(selectDialogueScenario(stateWithNulls)).toBeNull();
+      expect(state.dialogueHistory).toEqual(mockHistory);
     });
   });
 
-  describe('error handling', () => {
-    it('should handle API errors', () => {
-      const errorState = {
-        ...initialState,
-        error: 'API Error: Failed to generate response',
-        isLoading: false,
-      };
-
-      // Test that error state is preserved
-      const actual = dialogueReducer(errorState, setDialogueLoading(false));
-      expect(actual.error).toBe('API Error: Failed to generate response');
-    });
-
-    it('should handle network errors', () => {
-      const errorMessage = 'Network Error: Could not connect to server';
-      const stateWithNetworkError = {
-        ...initialState,
-        error: errorMessage,
-        isLoading: false,
-      };
-
-      expect(stateWithNetworkError.error).toBe(errorMessage);
-    });
-  });
-
-  describe('edge cases', () => {
-    it('should handle empty dialogue history', () => {
-      expect(initialState.dialogueHistory).toHaveLength(0);
-      expect(selectDialogueHistory({dialogue: initialState})).toHaveLength(0);
-    });
-
-    it('should handle multiple emotion updates', () => {
-      const stateWithDialogue = {
-        ...initialState,
-        currentDialogue: {
-          id: 'test-dialogue',
-          characterId: 'aoi',
-          scenario: {
-            id: 'test',
-            category: 'daily',
-            title: 'Test',
-            description: 'Test dialogue',
-            initialPrompt: 'Hello',
-            tags: ['test'],
-            difficulty: 'easy',
-          },
-          messages: [],
-          startTime: Date.now(),
-          endTime: null,
-          emotionProgression: ['neutral'],
+  describe('restoreConversation', () => {
+    it('should restore conversation from history', async () => {
+      const mockConversation = {
+        id: 'conv-1',
+        characterId: 'aoi' as const,
+        scenario: mockScenario,
+        messages: [mockMessage],
+        startTime: Date.now(),
+        endTime: Date.now(),
+        metadata: {
+          emotionProgression: ['neutral', 'happy'],
+          messageCount: 1,
+          duration: 300000,
+          lastActivity: Date.now(),
         },
       };
 
-      let state = dialogueReducer(stateWithDialogue, updateEmotionState('happy'));
-      state = dialogueReducer(state, updateEmotionState('sad'));
-      state = dialogueReducer(state, updateEmotionState('angry'));
+      (historyService.loadConversationById as jest.Mock).mockResolvedValue(mockConversation);
 
-      expect(state.emotionState).toBe('angry');
-      expect(state.currentDialogue!.emotionProgression).toEqual(['neutral', 'happy', 'sad', 'angry']);
+      const action = restoreConversation('conv-1');
+      await store.dispatch(action);
+      const state = store.getState().dialogue;
+
+      expect(state.currentDialogue).toBeTruthy();
+      expect(state.currentDialogue?.id).toBe('conv-1');
+      expect(state.currentDialogue?.characterId).toBe('aoi');
+      expect(state.currentDialogue?.scenario).toEqual(mockScenario);
+      expect(state.currentDialogue?.messages).toEqual([mockMessage]);
+      expect(state.currentScenario).toEqual(mockScenario);
+      expect(state.emotionState).toBe('happy');
     });
 
-    it('should handle dialogue with many messages', () => {
-      const stateWithDialogue = {
-        ...initialState,
-        currentDialogue: {
-          id: 'test-dialogue',
-          characterId: 'aoi',
-          scenario: {
-            id: 'test',
-            category: 'daily',
-            title: 'Test',
-            description: 'Test dialogue',
-            initialPrompt: 'Hello',
-            tags: ['test'],
-            difficulty: 'easy',
-          },
-          messages: [],
-          startTime: Date.now(),
-          endTime: null,
-          emotionProgression: ['neutral'],
-        },
-      };
+    it('should handle restore conversation failure', async () => {
+      (historyService.loadConversationById as jest.Mock).mockResolvedValue(null);
 
-      let state = stateWithDialogue;
-      for (let i = 0; i < 100; i++) {
-        const message: DialogueMessage = {
-          id: `msg${i}`,
-          text: `Message ${i}`,
-          sender: i % 2 === 0 ? 'user' : 'character',
-          timestamp: Date.now() + i * 1000,
-          emotion: 'neutral',
-        };
-        state = dialogueReducer(state, addMessage(message));
-      }
+      const action = restoreConversation('nonexistent');
+      await store.dispatch(action);
+      const state = store.getState().dialogue;
 
-      expect(state.currentDialogue!.messages).toHaveLength(100);
-      expect(state.currentDialogue!.messages[99].text).toBe('Message 99');
+      expect(state.currentDialogue).toBeNull();
     });
   });
 });

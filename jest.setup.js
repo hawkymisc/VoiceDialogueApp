@@ -88,13 +88,50 @@ jest.mock('react-native-screens', () => ({
   enableScreens: jest.fn(),
 }));
 
-// Mock Dimensions
+// Mock React Native components and APIs
 jest.mock('react-native', () => {
   const RN = jest.requireActual('react-native');
-  RN.Dimensions = {
-    get: jest.fn(() => ({ width: 375, height: 812 })),
+  return {
+    ...RN,
+    Dimensions: {
+      get: jest.fn(() => ({ width: 375, height: 812 })),
+    },
+    Settings: {
+      get: jest.fn(),
+      set: jest.fn(),
+      watchKeys: jest.fn(),
+      clearWatch: jest.fn(),
+    },
+    NativeModules: {
+      ...RN.NativeModules,
+      SettingsManager: {
+        getConstants: jest.fn(() => ({})),
+        settings: {},
+      },
+      DevSettings: {
+        getConstants: jest.fn(() => ({})),
+        reload: jest.fn(),
+        onFastRefresh: jest.fn(),
+        setHotLoadingEnabled: jest.fn(),
+        setLiveReloadEnabled: jest.fn(),
+        setProfilingEnabled: jest.fn(),
+        addMenuItem: jest.fn(),
+        addListener: jest.fn(),
+        removeListeners: jest.fn(),
+      },
+      PlatformConstants: {
+        getConstants: jest.fn(() => ({
+          interfaceIdiom: 'phone',
+          osVersion: '14.0',
+          systemName: 'iOS',
+        })),
+      },
+    },
+    TurboModuleRegistry: {
+      getEnforcing: jest.fn(() => null),
+      get: jest.fn(() => null),
+    },
   };
-  return RN;
 });
 
 // Mock Platform

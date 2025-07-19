@@ -8,7 +8,10 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
-import {Character, EmotionState} from '../types/Character';
+import {Character, EmotionState, CharacterType} from '../types/Character';
+import {EmotionState as DialogueEmotionState} from '../types/Dialogue';
+import {Live2DViewer} from './Live2DViewer';
+import {useLive2D} from '../hooks/useLive2D';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -19,8 +22,11 @@ export interface CharacterDisplayProps {
   emotion: EmotionState;
   isActive: boolean;
   isSpeaking?: boolean;
-  lipSyncData?: any; // Will be replaced with proper LipSyncData type
+  lipSyncData?: ArrayBuffer;
+  useLive2D?: boolean;
   onInteraction: (interaction: InteractionType) => void;
+  onModelLoaded?: (characterId: CharacterType) => void;
+  onLive2DError?: (error: string) => void;
 }
 
 export const CharacterDisplay: React.FC<CharacterDisplayProps> = ({
@@ -29,10 +35,26 @@ export const CharacterDisplay: React.FC<CharacterDisplayProps> = ({
   isActive,
   isSpeaking = false,
   lipSyncData,
+  useLive2D = false,
   onInteraction,
+  onModelLoaded,
+  onLive2DError,
 }) => {
   const [animationValue] = useState(new Animated.Value(0));
   const [breathingAnimation] = useState(new Animated.Value(0));
+  const [showLive2D, setShowLive2D] = useState(useLive2D);
+  
+  // Live2D integration
+  const {
+    currentModel,
+    isLoading: isLive2DLoading,
+    error: live2dError,
+    playTalkingAnimation,
+    playEmotionSequence,
+    playIdleAnimation,
+    startLipSyncWithAudio,
+    stopLipSyncAnimation,
+  } = useLive2D();
 
   useEffect(() => {
     // Breathing animation for idle state
@@ -77,6 +99,58 @@ export const CharacterDisplay: React.FC<CharacterDisplayProps> = ({
       animationValue.setValue(0);
     }
   }, [isSpeaking]);
+
+  // Handle Live2D error
+  useEffect(() => {
+    if (live2dError) {
+      onLive2DError?.(live2dError);
+    }
+  }, [live2dError, onLive2DError]);
+
+  // Map character emotion to Live2D emotion
+  const mapEmotionToLive2D = (emotion: EmotionState): DialogueEmotionState => {
+    switch (emotion.primary) {
+      case 'joy':
+      case 'excited':
+        return 'happy';
+      case 'sadness':
+        return 'sad';
+      case 'anger':
+        return 'angry';
+      case 'surprise':
+        return 'surprised';
+      case 'embarrassed':
+        return 'embarrassed';
+      case 'fear':
+        return 'sad';
+      default:
+        return 'neutral';
+    }
+  };
+
+  // Handle Live2D animations based on state
+  useEffect(() => {
+    if (useLive2D && currentModel) {
+      const dialogueEmotion = mapEmotionToLive2D(emotion);
+      
+      if (isSpeaking) {
+        playTalkingAnimation(lipSyncData);
+      } else {
+        playEmotionSequence(dialogueEmotion);
+      }
+    }
+  }, [isSpeaking, emotion, currentModel, useLive2D, lipSyncData, playTalkingAnimation, playEmotionSequence]);
+
+  // Handle lip sync
+  useEffect(() => {
+    if (useLive2D && currentModel) {
+      if (isSpeaking && lipSyncData) {
+        startLipSyncWithAudio(lipSyncData);
+      } else {
+        stopLipSyncAnimation();
+      }
+    }
+  }, [isSpeaking, lipSyncData, currentModel, useLive2D, startLipSyncWithAudio, stopLipSyncAnimation]);
 
   const handlePress = () => {
     onInteraction('tap');
@@ -140,46 +214,68 @@ export const CharacterDisplay: React.FC<CharacterDisplayProps> = ({
       onLongPress={handleLongPress}
       activeOpacity={0.8}>
       <View style={styles.characterImageContainer}>
-        {/* Live2D Model Container - Placeholder for Live2D integration */}
-        <Animated.View
-          style={[
-            styles.live2dContainer,
-            {
-              transform: [
-                {
-                  scale: breathingAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [1, 1.02],
-                  }),
-                },
-              ],
-            },
-          ]}>
-          <Image
-            source={{uri: getEmotionExpression()}}
+        {/* Live2D Model Container or Static Image */}
+        {useLive2D ? (
+          <View style={styles.live2dContainer}>
+            <Live2DViewer
+              characterId={character.id as CharacterType}
+              emotion={mapEmotionToLive2D(emotion)}
+              isVisible={isActive}
+              enableInteraction={isActive}
+              enableAutoAnimation={!isSpeaking}
+              style={styles.live2dViewer}
+              onModelLoaded={onModelLoaded}
+              onError={onLive2DError}
+            />
+            
+            {/* Loading overlay */}
+            {isLive2DLoading && (
+              <View style={styles.loadingOverlay}>
+                <Text style={styles.loadingText}>Loading...</Text>
+              </View>
+            )}
+          </View>
+        ) : (
+          <Animated.View
             style={[
-              styles.characterImage,
-              isSpeaking && styles.speakingCharacter,
-            ]}
-            resizeMode="contain"
-          />
-
-          {/* Lip Sync Indicator */}
-          {isSpeaking && (
-            <Animated.View
+              styles.live2dContainer,
+              {
+                transform: [
+                  {
+                    scale: breathingAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.02],
+                    }),
+                  },
+                ],
+              },
+            ]}>
+            <Image
+              source={{uri: getEmotionExpression()}}
               style={[
-                styles.lipSyncIndicator,
-                {
-                  opacity: animationValue.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.3, 1],
-                  }),
-                },
-              ]}>
-              <Text style={styles.lipSyncText}>💬</Text>
-            </Animated.View>
-          )}
-        </Animated.View>
+                styles.characterImage,
+                isSpeaking && styles.speakingCharacter,
+              ]}
+              resizeMode="contain"
+            />
+
+            {/* Lip Sync Indicator */}
+            {isSpeaking && (
+              <Animated.View
+                style={[
+                  styles.lipSyncIndicator,
+                  {
+                    opacity: animationValue.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.3, 1],
+                    }),
+                  },
+                ]}>
+                <Text style={styles.lipSyncText}>💬</Text>
+              </Animated.View>
+            )}
+          </Animated.View>
+        )}
 
         {/* Emotion indicator */}
         <View style={styles.emotionIndicator}>
@@ -339,6 +435,27 @@ const styles = StyleSheet.create({
   activeText: {
     color: 'white',
     fontSize: 10,
+    fontWeight: 'bold',
+  },
+  live2dViewer: {
+    width: 120,
+    height: 160,
+    borderRadius: 8,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 12,
     fontWeight: 'bold',
   },
 });

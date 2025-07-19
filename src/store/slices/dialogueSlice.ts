@@ -1,285 +1,248 @@
-import {createSlice, createAsyncThunk, PayloadAction} from '@reduxjs/toolkit';
+import {createSlice, PayloadAction, createAsyncThunk} from '@reduxjs/toolkit';
+import type {RootState} from '../store';
 import {
-  ConversationState,
-  Conversation,
+  DialogueState,
   DialogueMessage,
-  DialogueRequest,
-  DialogueResponse,
-  ScenarioType,
-  ConversationHistory,
+  EmotionState,
+  DialogueScenario,
+  Dialogue,
+  DialogueHistoryEntry,
 } from '../../types/Dialogue';
+import {CharacterType} from '../../types/Character';
+import {openaiService} from '../../services/openaiService';
+import {historyService} from '../../services/historyService';
 
-// Initial state
-const initialState: ConversationState = {
-  currentConversation: null,
-  conversationHistory: {
-    conversations: [],
-    totalCount: 0,
-    favoriteConversations: [],
-  },
-  isGenerating: false,
-  currentSpeaker: null,
-  availableScenarios: [
-    'daily-conversation',
-    'work-scene',
-    'special-event',
-    'emotional-scene',
-    'comedy-scene',
-    'romantic-scene',
-  ],
+// Async thunk for generating dialogue response
+export const generateDialogueResponse = createAsyncThunk(
+  'dialogue/generateResponse',
+  async (params: {
+    characterId: CharacterType;
+    userMessage: string;
+    conversationHistory: DialogueMessage[];
+    scenario?: DialogueScenario;
+    relationshipContext?: string;
+    personalityTraits?: Record<string, number>;
+  }) => {
+    const response = await openaiService.generateDialogue({
+      characterId: params.characterId,
+      userMessage: params.userMessage,
+      conversationHistory: params.conversationHistory,
+      scenario: params.scenario?.description,
+      relationshipContext: params.relationshipContext,
+      personalityTraits: params.personalityTraits,
+    });
+    return response;
+  }
+);
+
+const initialState: DialogueState = {
+  currentDialogue: null,
+  dialogueHistory: [],
+  emotionState: 'neutral',
+  currentScenario: null,
+  isLoading: false,
   error: null,
 };
 
-// Async thunks
-export const generateDialogue = createAsyncThunk(
-  'dialogue/generateDialogue',
-  async (request: DialogueRequest, {rejectWithValue}) => {
-    try {
-      const response = await fetch('/api/dialogue/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to generate dialogue');
-      }
-      const data: DialogueResponse = await response.json();
-      return data;
-    } catch (error) {
-      return rejectWithValue(
-        error instanceof Error ? error.message : 'Unknown error',
-      );
-    }
-  },
-);
-
-export const fetchConversationHistory = createAsyncThunk(
-  'dialogue/fetchConversationHistory',
-  async (userId: string, {rejectWithValue}) => {
-    try {
-      const response = await fetch(`/api/conversations/history/${userId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch conversation history');
-      }
-      const data: ConversationHistory = await response.json();
-      return data;
-    } catch (error) {
-      return rejectWithValue(
-        error instanceof Error ? error.message : 'Unknown error',
-      );
-    }
-  },
-);
-
-export const saveConversation = createAsyncThunk(
-  'dialogue/saveConversation',
-  async (conversation: Conversation, {rejectWithValue}) => {
-    try {
-      const response = await fetch('/api/conversations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(conversation),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to save conversation');
-      }
-      return conversation;
-    } catch (error) {
-      return rejectWithValue(
-        error instanceof Error ? error.message : 'Unknown error',
-      );
-    }
-  },
-);
-
-export const addToFavorites = createAsyncThunk(
-  'dialogue/addToFavorites',
-  async (
-    {userId, conversationId}: {userId: string; conversationId: string},
-    {rejectWithValue},
-  ) => {
-    try {
-      const response = await fetch(
-        `/api/conversations/${conversationId}/favorite`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({userId}),
-        },
-      );
-      if (!response.ok) {
-        throw new Error('Failed to add to favorites');
-      }
-      return conversationId;
-    } catch (error) {
-      return rejectWithValue(
-        error instanceof Error ? error.message : 'Unknown error',
-      );
-    }
-  },
-);
-
-// Dialogue slice
-export const dialogueSlice = createSlice({
+const dialogueSlice = createSlice({
   name: 'dialogue',
   initialState,
   reducers: {
-    startNewConversation: (
-      state,
-      action: PayloadAction<{
-        userId: string;
-        scenario: ScenarioType;
-        participants: string[];
-      }>,
-    ) => {
-      const {userId, scenario, participants} = action.payload;
-      const newConversation: Conversation = {
-        id: `conv_${Date.now()}`,
-        userId,
-        participants,
-        messages: [],
+    startDialogue: (state, action: PayloadAction<{
+      characterId: CharacterType;
+      scenario: DialogueScenario;
+    }>) => {
+      const {characterId, scenario} = action.payload;
+      state.currentDialogue = {
+        id: `dialogue-${Date.now()}`,
+        characterId,
         scenario,
-        startTime: new Date(),
-        metadata: {
-          totalMessages: 0,
-          averageRating: 0,
-          tags: [],
-        },
+        messages: [],
+        startTime: Date.now(),
+        endTime: null,
+        emotionProgression: ['neutral'],
       };
-      state.currentConversation = newConversation;
-      state.currentSpeaker = null;
-    },
-    endCurrentConversation: state => {
-      if (state.currentConversation) {
-        state.currentConversation.endTime = new Date();
-        state.currentConversation.metadata.totalMessages =
-          state.currentConversation.messages.length;
-        // Add to history
-        state.conversationHistory.conversations.unshift(
-          state.currentConversation,
-        );
-        state.conversationHistory.totalCount += 1;
-        state.currentConversation = null;
-      }
-      state.currentSpeaker = null;
-    },
-    addMessage: (state, action: PayloadAction<DialogueMessage>) => {
-      if (state.currentConversation) {
-        state.currentConversation.messages.push(action.payload);
-        state.currentConversation.metadata.totalMessages += 1;
-      }
-    },
-    setCurrentSpeaker: (state, action: PayloadAction<string | null>) => {
-      state.currentSpeaker = action.payload;
-    },
-    updateMessageRating: (
-      state,
-      action: PayloadAction<{
-        messageId: string;
-        rating: number;
-      }>,
-    ) => {
-      const {messageId, rating} = action.payload;
-      if (state.currentConversation) {
-        const message = state.currentConversation.messages.find(
-          m => m.id === messageId,
-        );
-        if (message) {
-          message.metadata.userRating = rating;
-        }
-      }
-    },
-    toggleMessageFavorite: (state, action: PayloadAction<string>) => {
-      const messageId = action.payload;
-      if (state.currentConversation) {
-        const message = state.currentConversation.messages.find(
-          m => m.id === messageId,
-        );
-        if (message) {
-          message.metadata.isFavorite = !message.metadata.isFavorite;
-        }
-      }
-    },
-    setAvailableScenarios: (state, action: PayloadAction<ScenarioType[]>) => {
-      state.availableScenarios = action.payload;
-    },
-    clearDialogueError: state => {
+      state.currentScenario = scenario;
+      state.emotionState = 'neutral';
       state.error = null;
     },
+
+    endDialogue: (state) => {
+      if (state.currentDialogue) {
+        const endedDialogue = {
+          ...state.currentDialogue,
+          endTime: Date.now(),
+        };
+
+        // Add to history
+        const historyEntry: DialogueHistoryEntry = {
+          id: endedDialogue.id,
+          characterId: endedDialogue.characterId,
+          scenario: endedDialogue.scenario,
+          startTime: endedDialogue.startTime,
+          endTime: endedDialogue.endTime!,
+          messageCount: endedDialogue.messages.length,
+          emotionProgression: endedDialogue.emotionProgression,
+        };
+
+        state.dialogueHistory.unshift(historyEntry);
+        
+        // Save to persistent storage
+        historyService.saveConversation(endedDialogue);
+        historyService.addToHistory(historyEntry);
+        
+        state.currentDialogue = null;
+        state.currentScenario = null;
+      }
+    },
+
+    addMessage: (state, action: PayloadAction<DialogueMessage>) => {
+      if (state.currentDialogue) {
+        state.currentDialogue.messages.push(action.payload);
+      }
+    },
+
+    updateEmotionState: (state, action: PayloadAction<EmotionState>) => {
+      state.emotionState = action.payload;
+      if (state.currentDialogue) {
+        state.currentDialogue.emotionProgression.push(action.payload);
+      }
+    },
+
+    setDialogueScenario: (state, action: PayloadAction<DialogueScenario>) => {
+      state.currentScenario = action.payload;
+    },
+
+    setDialogueLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
+      if (action.payload) {
+        state.error = null;
+      }
+    },
+
+    clearDialogueError: (state) => {
+      state.error = null;
+    },
+
+    clearDialogueHistory: (state) => {
+      state.dialogueHistory = [];
+      // Clear persistent storage
+      historyService.clearAllHistory();
+    },
+
+    removeDialogueFromHistory: (state, action: PayloadAction<string>) => {
+      state.dialogueHistory = state.dialogueHistory.filter(
+        entry => entry.id !== action.payload
+      );
+      // Remove from persistent storage
+      historyService.removeFromHistory(action.payload);
+    },
+
+    rateDialogue: (state, action: PayloadAction<{
+      dialogueId: string;
+      rating: number;
+    }>) => {
+      const {dialogueId, rating} = action.payload;
+      const historyEntry = state.dialogueHistory.find(entry => entry.id === dialogueId);
+      if (historyEntry) {
+        historyEntry.rating = rating;
+      }
+    },
   },
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder
-      // Generate dialogue
-      .addCase(generateDialogue.pending, state => {
-        state.isGenerating = true;
+      .addCase(generateDialogueResponse.pending, (state) => {
+        state.isLoading = true;
         state.error = null;
       })
-      .addCase(generateDialogue.fulfilled, (state, action) => {
-        state.isGenerating = false;
-        const {message, nextSpeaker} = action.payload;
-        if (state.currentConversation) {
-          state.currentConversation.messages.push(message);
-          state.currentConversation.metadata.totalMessages += 1;
-        }
-        state.currentSpeaker = nextSpeaker;
-      })
-      .addCase(generateDialogue.rejected, (state, action) => {
-        state.isGenerating = false;
-        state.error = action.payload as string;
-      })
-      // Fetch conversation history
-      .addCase(fetchConversationHistory.pending, state => {
-        state.error = null;
-      })
-      .addCase(fetchConversationHistory.fulfilled, (state, action) => {
-        state.conversationHistory = action.payload;
-      })
-      .addCase(fetchConversationHistory.rejected, (state, action) => {
-        state.error = action.payload as string;
-      })
-      // Save conversation
-      .addCase(saveConversation.fulfilled, (state, action) => {
-        const savedConversation = action.payload;
-        const existingIndex = state.conversationHistory.conversations.findIndex(
-          c => c.id === savedConversation.id,
-        );
-        if (existingIndex >= 0) {
-          state.conversationHistory.conversations[existingIndex] =
-            savedConversation;
-        } else {
-          state.conversationHistory.conversations.unshift(savedConversation);
-          state.conversationHistory.totalCount += 1;
+      .addCase(generateDialogueResponse.fulfilled, (state, action) => {
+        state.isLoading = false;
+        
+        // Add character response message
+        if (state.currentDialogue) {
+          const characterMessage: DialogueMessage = {
+            id: `msg-${Date.now()}`,
+            text: action.payload.text,
+            sender: 'character',
+            timestamp: Date.now(),
+            emotion: action.payload.emotion,
+            audioUrl: undefined, // Will be set by TTS service
+          };
+          
+          state.currentDialogue.messages.push(characterMessage);
+          state.emotionState = action.payload.emotion;
+          state.currentDialogue.emotionProgression.push(action.payload.emotion);
         }
       })
-      // Add to favorites
-      .addCase(addToFavorites.fulfilled, (state, action) => {
-        const conversationId = action.payload;
-        if (
-          !state.conversationHistory.favoriteConversations.includes(
-            conversationId,
-          )
-        ) {
-          state.conversationHistory.favoriteConversations.push(conversationId);
+      .addCase(generateDialogueResponse.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message || 'Failed to generate dialogue response';
+      })
+      .addCase(loadDialogueHistory.fulfilled, (state, action) => {
+        state.dialogueHistory = action.payload;
+      })
+      .addCase(restoreConversation.fulfilled, (state, action) => {
+        if (action.payload) {
+          // Restore the conversation as current dialogue
+          state.currentDialogue = {
+            id: action.payload.id,
+            characterId: action.payload.characterId,
+            scenario: action.payload.scenario,
+            messages: action.payload.messages,
+            startTime: action.payload.startTime,
+            endTime: action.payload.endTime,
+            emotionProgression: action.payload.metadata.emotionProgression,
+          };
+          state.currentScenario = action.payload.scenario;
+          // Set emotion state to the last emotion in progression
+          if (action.payload.metadata.emotionProgression.length > 0) {
+            state.emotionState = action.payload.metadata.emotionProgression[
+              action.payload.metadata.emotionProgression.length - 1
+            ] as EmotionState;
+          }
         }
       });
   },
 });
 
+// Async thunk for loading dialogue history on app start
+export const loadDialogueHistory = createAsyncThunk(
+  'dialogue/loadHistory',
+  async () => {
+    const history = await historyService.loadDialogueHistory();
+    return history;
+  }
+);
+
+// Async thunk for restoring a conversation from history
+export const restoreConversation = createAsyncThunk(
+  'dialogue/restoreConversation',
+  async (conversationId: string) => {
+    const conversation = await historyService.loadConversationById(conversationId);
+    return conversation;
+  }
+);
+
 export const {
-  startNewConversation,
-  endCurrentConversation,
+  startDialogue,
+  endDialogue,
   addMessage,
-  setCurrentSpeaker,
-  updateMessageRating,
-  toggleMessageFavorite,
-  setAvailableScenarios,
+  updateEmotionState,
+  setDialogueScenario,
+  setDialogueLoading,
   clearDialogueError,
+  clearDialogueHistory,
+  removeDialogueFromHistory,
+  rateDialogue,
 } = dialogueSlice.actions;
+
+// Selectors
+export const selectDialogueState = (state: RootState) => state.dialogue;
+export const selectCurrentDialogue = (state: RootState) => state.dialogue.currentDialogue;
+export const selectDialogueHistory = (state: RootState) => state.dialogue.dialogueHistory;
+export const selectEmotionState = (state: RootState) => state.dialogue.emotionState;
+export const selectDialogueScenario = (state: RootState) => state.dialogue.currentScenario;
+export const selectIsDialogueLoading = (state: RootState) => state.dialogue.isLoading;
+export const selectDialogueError = (state: RootState) => state.dialogue.error;
 
 export default dialogueSlice.reducer;
