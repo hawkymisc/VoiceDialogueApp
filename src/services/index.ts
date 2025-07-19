@@ -11,3 +11,5 @@ export * from './conversationService';
 export * from './contentFilterService';
 export * from './securityService';
 export * from './audioPlayerService';
+export * from './dailyContentService';
+export * from './progressionService';
