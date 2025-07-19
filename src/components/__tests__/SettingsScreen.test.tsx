@@ -6,20 +6,7 @@ import {Alert} from 'react-native';
 import {SettingsScreen} from '../SettingsScreen';
 import {userSlice} from '../../store/slices/userSlice';
 
-// Mock Alert
-jest.mock('react-native', () => {
-  const RN = jest.requireActual('react-native');
-  return {
-    ...RN,
-    Alert: {
-      alert: jest.fn(),
-    },
-    Settings: {
-      get: jest.fn(),
-      set: jest.fn(),
-    },
-  };
-});
+// React Native mock is handled by jest.setup.js
 
 const mockAlert = Alert.alert as jest.Mock;
 

@@ -89,50 +89,150 @@ jest.mock('react-native-screens', () => ({
 }));
 
 // Mock React Native components and APIs
-jest.mock('react-native', () => {
-  const RN = jest.requireActual('react-native');
-  return {
-    ...RN,
-    Dimensions: {
-      get: jest.fn(() => ({ width: 375, height: 812 })),
+jest.mock('react-native', () => ({
+  Platform: {
+    OS: 'ios',
+    select: jest.fn((options) => options.ios),
+    constants: {
+      interfaceIdiom: 'phone',
+      osVersion: '14.0',
+      systemName: 'iOS',
     },
-    Settings: {
-      get: jest.fn(),
-      set: jest.fn(),
-      watchKeys: jest.fn(),
-      clearWatch: jest.fn(),
+  },
+  Dimensions: {
+    get: jest.fn(() => ({ width: 375, height: 812 })),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  },
+  Share: {
+    share: jest.fn(() => Promise.resolve()),
+  },
+  Alert: {
+    alert: jest.fn(),
+    prompt: jest.fn(),
+  },
+  Text: 'Text',
+  View: 'View',
+  Image: 'Image',
+  ScrollView: 'ScrollView',
+  TouchableOpacity: 'TouchableOpacity',
+  TouchableHighlight: 'TouchableHighlight',
+  FlatList: 'FlatList',
+  VirtualizedList: 'VirtualizedList',
+  VirtualizedSectionList: 'VirtualizedSectionList',
+  SectionList: 'SectionList',
+  StyleSheet: {
+    create: jest.fn((styles) => styles),
+    flatten: jest.fn((styles) => styles),
+  },
+  Animated: {
+    View: 'Animated.View',
+    Text: 'Animated.Text',
+    Value: jest.fn(() => ({
+      setValue: jest.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+    })),
+    timing: jest.fn(() => ({
+      start: jest.fn(),
+    })),
+    spring: jest.fn(() => ({
+      start: jest.fn(),
+    })),
+    createAnimatedComponent: jest.fn(() => 'AnimatedComponent'),
+  },
+  Settings: {
+    get: jest.fn(),
+    set: jest.fn(),
+    watchKeys: jest.fn(() => ({ remove: jest.fn() })),
+    clearWatch: jest.fn(),
+  },
+  NativeModules: {
+    SettingsManager: {
+      getConstants: jest.fn(() => ({})),
+      settings: {},
     },
-    NativeModules: {
-      ...RN.NativeModules,
-      SettingsManager: {
+    DevSettings: {
+      getConstants: jest.fn(() => ({})),
+      reload: jest.fn(),
+      onFastRefresh: jest.fn(),
+      setHotLoadingEnabled: jest.fn(),
+      setLiveReloadEnabled: jest.fn(),
+      setProfilingEnabled: jest.fn(),
+      addMenuItem: jest.fn(),
+      addListener: jest.fn(),
+      removeListeners: jest.fn(),
+    },
+    PlatformConstants: {
+      getConstants: jest.fn(() => ({
+        interfaceIdiom: 'phone',
+        osVersion: '14.0',
+        systemName: 'iOS',
+      })),
+    },
+  },
+  TurboModuleRegistry: {
+    getEnforcing: jest.fn((name) => {
+      if (name === 'SettingsManager') {
+        return {
+          getConstants: jest.fn(() => ({})),
+          settings: {},
+        };
+      }
+      return {
         getConstants: jest.fn(() => ({})),
-        settings: {},
-      },
-      DevSettings: {
-        getConstants: jest.fn(() => ({})),
-        reload: jest.fn(),
-        onFastRefresh: jest.fn(),
-        setHotLoadingEnabled: jest.fn(),
-        setLiveReloadEnabled: jest.fn(),
-        setProfilingEnabled: jest.fn(),
-        addMenuItem: jest.fn(),
-        addListener: jest.fn(),
-        removeListeners: jest.fn(),
-      },
-      PlatformConstants: {
-        getConstants: jest.fn(() => ({
-          interfaceIdiom: 'phone',
-          osVersion: '14.0',
-          systemName: 'iOS',
-        })),
-      },
+      };
+    }),
+    get: jest.fn(() => null),
+  },
+  NativeEventEmitter: jest.fn(() => ({
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+    removeAllListeners: jest.fn(),
+  })),
+  DeviceEventEmitter: {
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+    removeListener: jest.fn(),
+  },
+  AppState: {
+    currentState: 'active',
+    addEventListener: jest.fn(() => ({ remove: jest.fn() })),
+    removeEventListener: jest.fn(),
+  },
+  Linking: {
+    openURL: jest.fn(() => Promise.resolve()),
+    canOpenURL: jest.fn(() => Promise.resolve(true)),
+    getInitialURL: jest.fn(() => Promise.resolve(null)),
+  },
+  PermissionsAndroid: {
+    request: jest.fn(() => Promise.resolve('granted')),
+    check: jest.fn(() => Promise.resolve(true)),
+    PERMISSIONS: {
+      RECORD_AUDIO: 'android.permission.RECORD_AUDIO',
+      WRITE_EXTERNAL_STORAGE: 'android.permission.WRITE_EXTERNAL_STORAGE',
     },
-    TurboModuleRegistry: {
-      getEnforcing: jest.fn(() => null),
-      get: jest.fn(() => null),
+    RESULTS: {
+      GRANTED: 'granted',
+      DENIED: 'denied',
+      NEVER_ASK_AGAIN: 'never_ask_again',
     },
-  };
-});
+  },
+  StatusBar: {
+    setBarStyle: jest.fn(),
+    setHidden: jest.fn(),
+    setBackgroundColor: jest.fn(),
+    setTranslucent: jest.fn(),
+  },
+  Keyboard: {
+    dismiss: jest.fn(),
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+    removeAllListeners: jest.fn(),
+  },
+  PanResponder: {
+    create: jest.fn(() => ({
+      panHandlers: {},
+    })),
+  },
+}));
 
 // Mock Platform
 jest.mock('react-native/Libraries/Utilities/Platform', () => ({

@@ -1,25 +1,84 @@
 // Mock React Native modules that aren't available in test environment
-jest.mock('react-native', () => ({
-  Platform: {
-    OS: 'ios',
-    select: jest.fn((obj) => obj.ios),
-  },
-  Dimensions: {
-    get: jest.fn(() => ({
-      width: 375,
-      height: 812,
+jest.mock('react-native', () => {
+  const RN = {
+    Platform: {
+      OS: 'ios',
+      select: jest.fn((obj) => obj.ios),
+    },
+    Dimensions: {
+      get: jest.fn(() => ({
+        width: 375,
+        height: 812,
+      })),
+    },
+    Alert: {
+      alert: jest.fn(),
+    },
+    Settings: {
+      get: jest.fn(),
+      set: jest.fn(),
+      watchKeys: jest.fn(() => ({
+        remove: jest.fn(),
+      })),
+    },
+    NativeModules: {
+      SettingsManager: {
+        settings: {},
+        getConstants: () => ({}),
+      },
+    },
+    TurboModuleRegistry: {
+      getEnforcing: jest.fn(() => ({
+        getConstants: () => ({}),
+      })),
+    },
+    NativeEventEmitter: jest.fn(() => ({
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      removeAllListeners: jest.fn(),
     })),
-  },
-  Alert: {
-    alert: jest.fn(),
-  },
-  NativeModules: {},
-  NativeEventEmitter: jest.fn(() => ({
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    removeAllListeners: jest.fn(),
-  })),
-}));
+    StatusBar: {
+      setBarStyle: jest.fn(),
+      setHidden: jest.fn(),
+      setBackgroundColor: jest.fn(),
+      setTranslucent: jest.fn(),
+    },
+    Linking: {
+      openURL: jest.fn(),
+      canOpenURL: jest.fn(() => Promise.resolve(true)),
+      getInitialURL: jest.fn(() => Promise.resolve(null)),
+    },
+    PermissionsAndroid: {
+      request: jest.fn(() => Promise.resolve('granted')),
+      check: jest.fn(() => Promise.resolve(true)),
+      PERMISSIONS: {
+        RECORD_AUDIO: 'android.permission.RECORD_AUDIO',
+        WRITE_EXTERNAL_STORAGE: 'android.permission.WRITE_EXTERNAL_STORAGE',
+      },
+      RESULTS: {
+        GRANTED: 'granted',
+        DENIED: 'denied',
+        NEVER_ASK_AGAIN: 'never_ask_again',
+      },
+    },
+    Keyboard: {
+      dismiss: jest.fn(),
+      addListener: jest.fn(() => ({ remove: jest.fn() })),
+      removeAllListeners: jest.fn(),
+    },
+    DeviceEventEmitter: {
+      addListener: jest.fn(() => ({ remove: jest.fn() })),
+      removeListener: jest.fn(),
+    },
+    AppState: {
+      currentState: 'active',
+      addEventListener: jest.fn(() => ({ remove: jest.fn() })),
+      removeEventListener: jest.fn(),
+    },
+  };
+  
+  return RN;
+});
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -34,7 +93,28 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 // Mock react-native-vector-icons
-jest.mock('react-native-vector-icons/MaterialIcons', () => 'Icon');
+jest.mock('react-native-vector-icons/MaterialIcons', () => {
+  const React = require('react');
+  return React.forwardRef(() => React.createElement('Text', {}, 'Icon'));
+});
+
+jest.mock('react-native-vector-icons/Ionicons', () => {
+  const React = require('react');
+  return React.forwardRef(() => React.createElement('Text', {}, 'Icon'));
+});
+
+jest.mock('react-native-vector-icons/FontAwesome', () => {
+  const React = require('react');
+  return React.forwardRef(() => React.createElement('Text', {}, 'Icon'));
+});
+
+// Mock react-native-safe-area-context
+jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaView: 'SafeAreaView',
+  SafeAreaProvider: 'SafeAreaProvider',
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+  useSafeAreaFrame: () => ({ x: 0, y: 0, width: 375, height: 812 }),
+}));
 
 // Mock react-native-sound
 jest.mock('react-native-sound', () => {
@@ -132,6 +212,59 @@ global.AbortController = class AbortController {
 process.env.OPENAI_API_KEY = 'test-openai-key';
 process.env.AZURE_SPEECH_KEY = 'test-azure-key';
 process.env.AZURE_SPEECH_REGION = 'test-region';
+
+// Mock storageService for integration tests
+jest.mock('../../services/storageService', () => ({
+  storageService: {
+    saveUserProfile: jest.fn(),
+    getUserProfile: jest.fn(),
+    saveUserPreferences: jest.fn(),
+    getUserPreferences: jest.fn(),
+    saveFavoriteConversations: jest.fn(),
+    getFavoriteConversations: jest.fn(),
+    saveUnlockedContent: jest.fn(),
+    getUnlockedContent: jest.fn(),
+    clearAllData: jest.fn(),
+    exportData: jest.fn(),
+    importData: jest.fn(),
+    get: jest.fn(),
+    save: jest.fn(),
+  },
+}));
+
+// Mock progressionService
+jest.mock('../../services/progressionService', () => ({
+  progressionService: {
+    initialize: jest.fn(),
+    getUserProgress: jest.fn(),
+    updateProgress: jest.fn(),
+    checkAchievements: jest.fn(),
+    getAchievements: jest.fn(),
+    getMilestones: jest.fn(),
+    updateWeeklyGoals: jest.fn(),
+    calculateStreakProgress: jest.fn(),
+  },
+}));
+
+// Mock openaiService
+jest.mock('../../services/openaiService', () => ({
+  openaiService: {
+    generateDialogue: jest.fn(),
+    generateEmotion: jest.fn(),
+    createChatCompletion: jest.fn(),
+    analyzeConversation: jest.fn(),
+  },
+}));
+
+// Mock dailyContentService
+jest.mock('../../services/dailyContentService', () => ({
+  dailyContentService: {
+    getDailyContent: jest.fn(),
+    generateDailyConversation: jest.fn(),
+    getSeasonalContent: jest.fn(),
+    getEventContent: jest.fn(),
+  },
+}));
 
 // Set up longer timeout for integration tests
 jest.setTimeout(30000);

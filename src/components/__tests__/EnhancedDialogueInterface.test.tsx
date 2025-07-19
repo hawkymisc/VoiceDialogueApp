@@ -24,25 +24,38 @@ const mockCharacter = {
   name: '蒼',
   age: 22,
   personality: {
-    aggressiveness: 0.6,
-    kindness: 0.8,
-    tsundere: 0.3,
-    shyness: 0.4,
+    aggressiveness: 60,
+    kindness: 80,
+    tsundereLevel: 30,
+    shyness: 40,
   },
   appearance: {
     hairColor: 'black',
-    clothing: 'casual',
-    expression: 'neutral',
+    eyeColor: 'brown',
+    clothing: {
+      id: 'casual_01',
+      name: 'Casual Outfit',
+      category: 'casual',
+      imageUrl: '/assets/clothing/casual_01.png',
+    },
+    expressions: {
+      neutral: '/assets/expressions/neutral.png',
+      happy: '/assets/expressions/happy.png',
+      sad: '/assets/expressions/sad.png',
+      angry: '/assets/expressions/angry.png',
+      surprised: '/assets/expressions/surprised.png',
+      embarrassed: '/assets/expressions/embarrassed.png',
+    },
   },
-  voice: {
-    pitch: 0.5,
-    tone: 0.5,
-    speed: 0.5,
+  voiceSettings: {
+    pitch: 50,
+    tone: 'warm',
+    speed: 1.0,
+    emotionalRange: 70,
+    voiceId: 'ja-JP-KeitaNeural',
   },
-  relationship: {
-    type: 'friend',
-    level: 50,
-  },
+  description: 'A kind and gentle character',
+  backstory: 'A 22-year-old student with a warm personality',
 };
 
 const mockConversation = {
@@ -80,15 +93,23 @@ const createMockStore = (initialState = {}) => {
     },
     preloadedState: {
       dialogue: {
-        messages: [],
-        currentEmotion: 'neutral',
-        scenario: null,
-        isActive: false,
+        currentDialogue: null,
+        dialogueHistory: [],
+        emotionState: 'neutral',
+        currentScenario: null,
+        isLoading: false,
+        error: null,
       },
       character: {
-        characters: [mockCharacter],
-        selectedCharacter: mockCharacter,
-        customizations: {},
+        characters: { aoi: mockCharacter },
+        activeCharacter: 'aoi',
+        relationship: {
+          type: 'senpai-kohai',
+          intimacyLevel: 50,
+          trustLevel: 50,
+        },
+        isLoading: false,
+        error: null,
       },
       ...initialState,
     },

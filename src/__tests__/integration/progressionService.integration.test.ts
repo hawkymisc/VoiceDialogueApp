@@ -3,9 +3,25 @@ import {storageService} from '../../services/storageService';
 import {UserProgress, Achievement, WeeklyGoal, ProgressionMilestone} from '../../types/Engagement';
 
 // Mock dependencies
-jest.mock('../../services/storageService');
+jest.mock('../../services/storageService', () => ({
+  storageService: {
+    saveUserProfile: jest.fn(),
+    getUserProfile: jest.fn(),
+    saveUserPreferences: jest.fn(),
+    getUserPreferences: jest.fn(),
+    saveFavoriteConversations: jest.fn(),
+    getFavoriteConversations: jest.fn(),
+    saveUnlockedContent: jest.fn(),
+    getUnlockedContent: jest.fn(),
+    clearAllData: jest.fn(),
+    exportData: jest.fn(),
+    importData: jest.fn(),
+    get: jest.fn(),
+    save: jest.fn(),
+  },
+}));
 
-const mockStorageService = storageService as jest.Mocked<typeof storageService>;
+const mockStorageService = require('../../services/storageService').storageService;
 
 describe('ProgressionService Integration Tests', () => {
   const testUserId = 'test-user-123';

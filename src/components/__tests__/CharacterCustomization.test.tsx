@@ -6,13 +6,7 @@ import {Alert} from 'react-native';
 import {CharacterCustomization} from '../CharacterCustomization';
 import characterReducer from '../../store/slices/characterSlice';
 
-// Mock Alert
-jest.mock('react-native', () => ({
-  ...jest.requireActual('react-native'),
-  Alert: {
-    alert: jest.fn(),
-  },
-}));
+// React Native mock is handled by jest.setup.js
 
 const mockStore = configureStore({
   reducer: {

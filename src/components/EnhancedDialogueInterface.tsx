@@ -19,7 +19,7 @@ import {CharacterType} from '../types/Character';
 import {DialogueMessage, EmotionType} from '../types/Dialogue';
 import {Scenario} from '../types/Scenario';
 import {RootState} from '../store';
-import {addDialogueMessage, setCurrentEmotion} from '../store/slices/dialogueSlice';
+import {addMessage, updateEmotionState} from '../store/slices/dialogueSlice';
 import EnhancedScenarioSelector from './EnhancedScenarioSelector';
 
 interface EnhancedDialogueInterfaceProps {
@@ -38,11 +38,13 @@ const EnhancedDialogueInterface: React.FC<EnhancedDialogueInterfaceProps> = ({
   const dispatch = useDispatch();
   const scrollViewRef = useRef<ScrollView>(null);
   
-  const {messages, currentEmotion, scenario: currentScenario} = useSelector(
-    (state: RootState) => state.dialogue
-  );
+  const dialogue = useSelector((state: RootState) => state.dialogue);
+  const messages = dialogue.currentDialogue?.messages || [];
+  const currentEmotion = dialogue.emotionState;
+  const currentScenario = dialogue.currentScenario;
+  
   const character = useSelector((state: RootState) => 
-    state.character.characters.find(c => c.id === characterId)
+    state.character.characters[characterId]
   );
 
   const [inputText, setInputText] = useState('');

@@ -7,23 +7,7 @@ import {DataManagementScreen} from '../DataManagementScreen';
 import {userSlice} from '../../store/slices/userSlice';
 import {useStorage} from '../../hooks/useStorage';
 
-// Mock Alert and Share
-jest.mock('react-native', () => {
-  const RN = jest.requireActual('react-native');
-  return {
-    ...RN,
-    Alert: {
-      alert: jest.fn(),
-    },
-    Share: {
-      share: jest.fn(),
-    },
-    Settings: {
-      get: jest.fn(),
-      set: jest.fn(),
-    },
-  };
-});
+// React Native mock is handled by jest.setup.js
 
 const mockAlert = Alert.alert as jest.Mock;
 const mockShare = Share.share as jest.Mock;
