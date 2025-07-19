@@ -8,6 +8,8 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
+    "test:integration": "jest --config jest.integration.config.js",
+    "test:all": "npm run test && npm run test:integration",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

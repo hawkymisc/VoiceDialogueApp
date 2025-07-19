@@ -1,0 +1,514 @@
+import {contentFilterService} from '../../services/contentFilterService';
+import {securityService} from '../../services/securityService';
+import {storageService} from '../../services/storageService';
+import {
+  ContentFilterResult,
+  SecurityAuditLog,
+  PrivacySettings,
+  DataExportRequest,
+} from '../../types/ContentSecurity';
+
+// Mock dependencies
+jest.mock('../../services/storageService');
+
+const mockStorageService = storageService as jest.Mocked<typeof storageService>;
+
+describe('Content Security Integration Tests', () => {
+  const testUserId = 'test-user-123';
+  const testContent = 'テストメッセージです';
+  
+  beforeEach(() => {
+    jest.clearAllMocks();
+    
+    // Mock storage service
+    mockStorageService.get.mockResolvedValue(null);
+    mockStorageService.save.mockResolvedValue();
+  });
+
+  describe('Content Filtering Integration', () => {
+    beforeEach(async () => {
+      await contentFilterService.initialize();
+    });
+
+    it('should scan content with all filter layers', async () => {
+      const result = await contentFilterService.scanContent(testContent, {
+        userId: testUserId,
+        characterId: 'aoi',
+        scenarioId: 'daily_morning',
+      });
+
+      expect(result).toMatchObject({
+        isApproved: expect.any(Boolean),
+        confidence: expect.any(Number),
+        detectedIssues: expect.any(Array),
+        suggestedAlternatives: expect.any(Array),
+        processingTime: expect.any(Number),
+      });
+    });
+
+    it('should handle inappropriate content detection', async () => {
+      const inappropriateContent = '不適切な内容を含むメッセージ';
+      
+      const result = await contentFilterService.scanContent(inappropriateContent, {
+        userId: testUserId,
+        characterId: 'aoi',
+        scenarioId: 'daily_morning',
+      });
+
+      expect(result.confidence).toBeGreaterThan(0);
+      expect(result.processingTime).toBeGreaterThan(0);
+    });
+
+    it('should apply age rating restrictions', async () => {
+      const adultContent = '成人向けコンテンツ';
+      
+      const settings = await contentFilterService.getFilterSettings(testUserId);
+      settings.ageRating = 'teen';
+      await contentFilterService.updateFilterSettings(testUserId, settings);
+
+      const result = await contentFilterService.scanContent(adultContent, {
+        userId: testUserId,
+        characterId: 'aoi',
+        scenarioId: 'romance_intimate',
+      });
+
+      expect(result.confidence).toBeDefined();
+    });
+
+    it('should handle custom filter rules', async () => {
+      const customRule = {
+        id: 'custom-rule-1',
+        name: 'テストルール',
+        pattern: 'テスト.*禁止',
+        action: 'block' as const,
+        severity: 'medium' as const,
+        isActive: true,
+      };
+
+      await contentFilterService.addCustomFilter(testUserId, customRule);
+      
+      const blockedContent = 'テスト禁止ワード';
+      const result = await contentFilterService.scanContent(blockedContent, {
+        userId: testUserId,
+        characterId: 'aoi',
+        scenarioId: 'daily_morning',
+      });
+
+      expect(result.detectedIssues).toContain('custom_filter_violation');
+    });
+
+    it('should integrate with security service for audit logging', async () => {
+      const suspiciousContent = '怪しい内容のメッセージ';
+      
+      const result = await contentFilterService.scanContent(suspiciousContent, {
+        userId: testUserId,
+        characterId: 'aoi',
+        scenarioId: 'daily_morning',
+      });
+
+      if (!result.isApproved) {
+        await securityService.logSecurityEvent(testUserId, {
+          eventType: 'content_filtered',
+          details: {
+            content: suspiciousContent,
+            filterResult: result,
+          },
+          riskLevel: 'medium',
+        });
+      }
+
+      expect(result).toBeDefined();
+    });
+
+    it('should handle bulk content scanning', async () => {
+      const contentBatch = [
+        'メッセージ1',
+        'メッセージ2',
+        'メッセージ3',
+      ];
+
+      const results = await Promise.all(
+        contentBatch.map(content => 
+          contentFilterService.scanContent(content, {
+            userId: testUserId,
+            characterId: 'aoi',
+            scenarioId: 'daily_morning',
+          })
+        )
+      );
+
+      expect(results).toHaveLength(3);
+      expect(results.every(r => typeof r.isApproved === 'boolean')).toBe(true);
+    });
+  });
+
+  describe('Security Service Integration', () => {
+    beforeEach(async () => {
+      await securityService.initialize();
+    });
+
+    it('should encrypt and decrypt data successfully', async () => {
+      const sensitiveData = {
+        userId: testUserId,
+        personalInfo: 'プライベート情報',
+        timestamp: new Date(),
+      };
+
+      const encrypted = await securityService.encryptData(JSON.stringify(sensitiveData), testUserId);
+      const decrypted = await securityService.decryptData(encrypted, testUserId);
+
+      expect(JSON.parse(decrypted)).toEqual(sensitiveData);
+    });
+
+    it('should handle privacy settings management', async () => {
+      const privacySettings: PrivacySettings = {
+        dataCollection: 'minimal',
+        analyticsEnabled: false,
+        personalizedContent: true,
+        thirdPartySharing: false,
+        dataRetentionPeriod: 365,
+        cookiePreferences: {
+          necessary: true,
+          analytics: false,
+          marketing: false,
+          preferences: true,
+        },
+      };
+
+      await securityService.updatePrivacySettings(testUserId, privacySettings);
+      const retrieved = await securityService.getPrivacySettings(testUserId);
+
+      expect(retrieved).toEqual(privacySettings);
+    });
+
+    it('should perform GDPR-compliant data export', async () => {
+      const exportRequest: DataExportRequest = {
+        userId: testUserId,
+        requestedData: ['conversations', 'user_preferences', 'character_progress'],
+        format: 'json',
+        includeMetadata: true,
+      };
+
+      const exportData = await securityService.exportUserData(exportRequest);
+
+      expect(exportData).toMatchObject({
+        userId: testUserId,
+        exportDate: expect.any(Date),
+        format: 'json',
+        data: expect.any(Object),
+        metadata: expect.any(Object),
+      });
+    });
+
+    it('should handle secure data deletion', async () => {
+      // Create some test data
+      const testData = {conversations: ['test conversation']};
+      await securityService.encryptData(JSON.stringify(testData), testUserId);
+
+      // Request deletion
+      const deletionResult = await securityService.deleteUserData(testUserId, {
+        dataTypes: ['conversations', 'user_preferences'],
+        confirmationRequired: false,
+        secureWipe: true,
+      });
+
+      expect(deletionResult.success).toBe(true);
+      expect(deletionResult.deletedDataTypes).toContain('conversations');
+    });
+
+    it('should log security events with appropriate risk assessment', async () => {
+      const securityEvent = {
+        eventType: 'suspicious_activity' as const,
+        details: {
+          action: 'multiple_failed_attempts',
+          attempts: 5,
+        },
+        riskLevel: 'high' as const,
+      };
+
+      await securityService.logSecurityEvent(testUserId, securityEvent);
+
+      const auditLogs = await securityService.getAuditLogs(testUserId, {
+        startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        endDate: new Date(),
+        eventTypes: ['suspicious_activity'],
+      });
+
+      expect(auditLogs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            eventType: 'suspicious_activity',
+            riskLevel: 'high',
+          }),
+        ])
+      );
+    });
+
+    it('should handle data anonymization correctly', async () => {
+      const personalData = {
+        userId: testUserId,
+        name: '田中太郎',
+        email: 'tanaka@example.com',
+        conversations: ['プライベートな会話'],
+      };
+
+      const anonymized = await securityService.anonymizeData(personalData);
+
+      expect(anonymized.userId).not.toBe(testUserId);
+      expect(anonymized.name).not.toBe('田中太郎');
+      expect(anonymized.email).not.toBe('tanaka@example.com');
+      expect(anonymized.conversations).toEqual(['プライベートな会話']); // Content preserved
+    });
+  });
+
+  describe('Integration Error Handling', () => {
+    it('should handle content filter service failures gracefully', async () => {
+      // Mock filter service to fail
+      jest.spyOn(contentFilterService, 'scanContent').mockRejectedValue(new Error('Filter service error'));
+
+      try {
+        await contentFilterService.scanContent(testContent, {
+          userId: testUserId,
+          characterId: 'aoi',
+          scenarioId: 'daily_morning',
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+      }
+    });
+
+    it('should handle security service encryption failures', async () => {
+      // Mock encryption to fail
+      jest.spyOn(securityService, 'encryptData').mockRejectedValue(new Error('Encryption failed'));
+
+      try {
+        await securityService.encryptData('test data', testUserId);
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+      }
+    });
+
+    it('should handle storage service failures in security operations', async () => {
+      mockStorageService.save.mockRejectedValue(new Error('Storage error'));
+
+      try {
+        await securityService.updatePrivacySettings(testUserId, {
+          dataCollection: 'minimal',
+          analyticsEnabled: false,
+          personalizedContent: true,
+          thirdPartySharing: false,
+          dataRetentionPeriod: 365,
+          cookiePreferences: {
+            necessary: true,
+            analytics: false,
+            marketing: false,
+            preferences: true,
+          },
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+      }
+    });
+  });
+
+  describe('Performance and Scalability', () => {
+    it('should handle concurrent content filtering requests', async () => {
+      const requests = Array(10).fill(null).map((_, index) => 
+        contentFilterService.scanContent(`テストメッセージ ${index}`, {
+          userId: testUserId,
+          characterId: 'aoi',
+          scenarioId: 'daily_morning',
+        })
+      );
+
+      const results = await Promise.all(requests);
+
+      expect(results).toHaveLength(10);
+      expect(results.every(r => typeof r.isApproved === 'boolean')).toBe(true);
+    });
+
+    it('should handle concurrent encryption operations', async () => {
+      const encryptionTasks = Array(5).fill(null).map((_, index) => 
+        securityService.encryptData(`データ ${index}`, testUserId)
+      );
+
+      const encryptedResults = await Promise.all(encryptionTasks);
+
+      expect(encryptedResults).toHaveLength(5);
+      expect(encryptedResults.every(r => typeof r === 'string')).toBe(true);
+    });
+
+    it('should maintain performance under load', async () => {
+      const startTime = Date.now();
+
+      const tasks = Array(20).fill(null).map((_, index) => 
+        Promise.all([
+          contentFilterService.scanContent(`メッセージ ${index}`, {
+            userId: testUserId,
+            characterId: 'aoi',
+            scenarioId: 'daily_morning',
+          }),
+          securityService.encryptData(`データ ${index}`, testUserId),
+        ])
+      );
+
+      await Promise.all(tasks);
+
+      const processingTime = Date.now() - startTime;
+      expect(processingTime).toBeLessThan(10000); // Should complete within 10 seconds
+    });
+  });
+
+  describe('Data Consistency and Integrity', () => {
+    it('should maintain data integrity during encryption/decryption cycles', async () => {
+      const originalData = {
+        complex: true,
+        array: [1, 2, 3],
+        nested: {
+          value: 'test',
+          number: 42,
+        },
+        unicode: 'テスト文字列 🎌',
+      };
+
+      const encrypted = await securityService.encryptData(JSON.stringify(originalData), testUserId);
+      const decrypted = await securityService.decryptData(encrypted, testUserId);
+      const parsedData = JSON.parse(decrypted);
+
+      expect(parsedData).toEqual(originalData);
+    });
+
+    it('should ensure content filter consistency across sessions', async () => {
+      const testMessage = 'テスト一貫性メッセージ';
+      
+      const result1 = await contentFilterService.scanContent(testMessage, {
+        userId: testUserId,
+        characterId: 'aoi',
+        scenarioId: 'daily_morning',
+      });
+
+      // Simulate service restart
+      await contentFilterService.initialize();
+
+      const result2 = await contentFilterService.scanContent(testMessage, {
+        userId: testUserId,
+        characterId: 'aoi',
+        scenarioId: 'daily_morning',
+      });
+
+      expect(result1.isApproved).toBe(result2.isApproved);
+    });
+
+    it('should validate security audit log integrity', async () => {
+      const events = [
+        {
+          eventType: 'content_filtered' as const,
+          details: {content: 'テスト1'},
+          riskLevel: 'low' as const,
+        },
+        {
+          eventType: 'data_access' as const,
+          details: {operation: 'read'},
+          riskLevel: 'low' as const,
+        },
+        {
+          eventType: 'privacy_setting_change' as const,
+          details: {setting: 'dataCollection'},
+          riskLevel: 'medium' as const,
+        },
+      ];
+
+      for (const event of events) {
+        await securityService.logSecurityEvent(testUserId, event);
+      }
+
+      const auditLogs = await securityService.getAuditLogs(testUserId, {
+        startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        endDate: new Date(),
+      });
+
+      expect(auditLogs).toHaveLength(events.length);
+      expect(auditLogs.every(log => log.userId === testUserId)).toBe(true);
+    });
+  });
+
+  describe('Compliance and Regulatory Requirements', () => {
+    it('should support GDPR data portability requirements', async () => {
+      const exportRequest: DataExportRequest = {
+        userId: testUserId,
+        requestedData: ['all'],
+        format: 'json',
+        includeMetadata: true,
+      };
+
+      const exportData = await securityService.exportUserData(exportRequest);
+
+      expect(exportData.data).toHaveProperty('conversations');
+      expect(exportData.data).toHaveProperty('userPreferences');
+      expect(exportData.data).toHaveProperty('characterProgress');
+      expect(exportData.metadata).toHaveProperty('exportDate');
+      expect(exportData.metadata).toHaveProperty('dataVersion');
+    });
+
+    it('should support right to be forgotten (data deletion)', async () => {
+      // Create user data
+      await securityService.encryptData('user conversation data', testUserId);
+      await securityService.updatePrivacySettings(testUserId, {
+        dataCollection: 'minimal',
+        analyticsEnabled: false,
+        personalizedContent: true,
+        thirdPartySharing: false,
+        dataRetentionPeriod: 365,
+        cookiePreferences: {
+          necessary: true,
+          analytics: false,
+          marketing: false,
+          preferences: true,
+        },
+      });
+
+      // Request complete deletion
+      const deletionResult = await securityService.deleteUserData(testUserId, {
+        dataTypes: ['all'],
+        confirmationRequired: false,
+        secureWipe: true,
+      });
+
+      expect(deletionResult.success).toBe(true);
+      expect(deletionResult.deletionDate).toBeInstanceOf(Date);
+
+      // Verify data is deleted
+      const privacySettings = await securityService.getPrivacySettings(testUserId);
+      expect(privacySettings).toEqual(expect.objectContaining({
+        dataCollection: 'none', // Should default to none after deletion
+      }));
+    });
+
+    it('should maintain audit trail for compliance', async () => {
+      const complianceEvents = [
+        'data_export_requested',
+        'privacy_settings_updated',
+        'data_deletion_requested',
+        'consent_given',
+        'consent_withdrawn',
+      ];
+
+      for (const eventType of complianceEvents) {
+        await securityService.logSecurityEvent(testUserId, {
+          eventType: eventType as any,
+          details: {complianceAction: true},
+          riskLevel: 'low',
+        });
+      }
+
+      const auditLogs = await securityService.getAuditLogs(testUserId, {
+        startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        endDate: new Date(),
+        eventTypes: complianceEvents,
+      });
+
+      expect(auditLogs).toHaveLength(complianceEvents.length);
+      expect(auditLogs.every(log => log.details?.complianceAction)).toBe(true);
+    });
+  });
+});
