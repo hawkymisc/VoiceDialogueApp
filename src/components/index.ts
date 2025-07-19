@@ -15,3 +15,6 @@ export * from './DataManagementScreen';
 export {default as EnhancedScenarioSelector} from './EnhancedScenarioSelector';
 export {default as EnhancedDialogueInterface} from './EnhancedDialogueInterface';
 export {default as ConversationHistoryManager} from './ConversationHistoryManager';
+
+// Security and content management components
+export {default as SecuritySettingsScreen} from './SecuritySettingsScreen';

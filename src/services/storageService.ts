@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {SecureDataContainer} from '../types/ContentSecurity';
 import {UserProfile, UserPreferences} from '../types/User';
 
 export interface StorageService {
@@ -23,6 +24,7 @@ const STORAGE_KEYS = {
   CONVERSATION_HISTORY: 'CONVERSATION_HISTORY',
   USER_STATISTICS: 'USER_STATISTICS',
   LAST_BACKUP: 'LAST_BACKUP',
+  SECURE_DATA: 'SECURE_DATA',
 } as const;
 
 class StorageServiceImpl implements StorageService {
@@ -344,6 +346,60 @@ class StorageServiceImpl implements StorageService {
       });
     } catch (error) {
       console.error('Failed to get available backups:', error);
+      return [];
+    }
+  }
+
+  // セキュアデータ管理メソッド
+  async saveSecureData(key: string, container: SecureDataContainer): Promise<void> {
+    try {
+      const secureKey = `${STORAGE_KEYS.SECURE_DATA}_${key}`;
+      const serializedContainer = JSON.stringify({
+        ...container,
+        timestamp: container.timestamp.toISOString(),
+      });
+      await AsyncStorage.setItem(secureKey, serializedContainer);
+    } catch (error) {
+      console.error('Failed to save secure data:', error);
+      throw new Error('セキュアデータの保存に失敗しました');
+    }
+  }
+
+  async getSecureData(key: string): Promise<SecureDataContainer | null> {
+    try {
+      const secureKey = `${STORAGE_KEYS.SECURE_DATA}_${key}`;
+      const serializedContainer = await AsyncStorage.getItem(secureKey);
+      if (!serializedContainer) return null;
+
+      const container = JSON.parse(serializedContainer);
+      return {
+        ...container,
+        timestamp: new Date(container.timestamp),
+      };
+    } catch (error) {
+      console.error('Failed to get secure data:', error);
+      return null;
+    }
+  }
+
+  async deleteSecureData(key: string): Promise<void> {
+    try {
+      const secureKey = `${STORAGE_KEYS.SECURE_DATA}_${key}`;
+      await AsyncStorage.removeItem(secureKey);
+    } catch (error) {
+      console.error('Failed to delete secure data:', error);
+      throw new Error('セキュアデータの削除に失敗しました');
+    }
+  }
+
+  async getAllSecureDataKeys(): Promise<string[]> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      return keys
+        .filter(key => key.startsWith(`${STORAGE_KEYS.SECURE_DATA}_`))
+        .map(key => key.replace(`${STORAGE_KEYS.SECURE_DATA}_`, ''));
+    } catch (error) {
+      console.error('Failed to get secure data keys:', error);
       return [];
     }
   }

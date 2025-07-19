@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import {CharacterType} from '../types/Character';
 import {DialogueMessage, EmotionState} from '../types/Dialogue';
 import {CHARACTER_PROMPTS} from '../data/characters';
+import {contentFilterService} from './contentFilterService';
 
 interface OpenAIConfig {
   apiKey: string;
@@ -16,12 +17,15 @@ interface DialogueRequest {
   scenario?: string;
   relationshipContext?: string;
   personalityTraits?: Record<string, number>;
+  userId?: string;
 }
 
 interface DialogueResponse {
   text: string;
   emotion: EmotionState;
   confidence: number;
+  filtered?: boolean;
+  contentWarnings?: string[];
   usage?: {
     promptTokens: number;
     completionTokens: number;
@@ -87,8 +91,34 @@ class OpenAIService {
     this.ensureInitialized();
 
     try {
-      const systemPrompt = this.buildSystemPrompt(request);
-      const messages = this.buildMessageHistory(request, systemPrompt);
+      // ユーザーメッセージのコンテンツフィルタリング
+      let userMessage = request.userMessage;
+      let contentWarnings: string[] = [];
+      let filtered = false;
+
+      if (request.userId) {
+        const userScanResult = await contentFilterService.scanContent(
+          request.userMessage,
+          'dialogue',
+          request.userId
+        );
+
+        if (!userScanResult.isAllowed) {
+          throw new Error('ユーザーメッセージが不適切なコンテンツを含んでいます');
+        }
+
+        if (userScanResult.filteredContent) {
+          userMessage = userScanResult.filteredContent;
+          filtered = true;
+        }
+
+        if (userScanResult.detectedIssues.length > 0) {
+          contentWarnings = userScanResult.detectedIssues.map(issue => issue.description);
+        }
+      }
+
+      const systemPrompt = this.buildSystemPrompt({...request, userMessage});
+      const messages = this.buildMessageHistory({...request, userMessage}, systemPrompt);
 
       const response = await this.client!.chat.completions.create({
         model: 'gpt-4',
@@ -105,7 +135,29 @@ class OpenAIService {
         throw new Error('No response generated');
       }
 
-      const generatedText = choice.message.content.trim();
+      let generatedText = choice.message.content.trim();
+      
+      // 生成されたレスポンスのコンテンツフィルタリング
+      if (request.userId) {
+        const responseScanResult = await contentFilterService.scanContent(
+          generatedText,
+          'dialogue',
+          request.userId
+        );
+
+        if (!responseScanResult.isAllowed) {
+          // 不適切なコンテンツが生成された場合の代替レスポンス
+          generatedText = 'すみません、適切な応答を生成できませんでした。別の話題について話しませんか？';
+          filtered = true;
+        } else if (responseScanResult.filteredContent) {
+          generatedText = responseScanResult.filteredContent;
+          filtered = true;
+        }
+
+        if (responseScanResult.detectedIssues.length > 0) {
+          contentWarnings.push(...responseScanResult.detectedIssues.map(issue => issue.description));
+        }
+      }
       
       // Analyze emotion from the generated text
       const emotionAnalysis = await this.analyzeEmotion(generatedText);
@@ -114,6 +166,8 @@ class OpenAIService {
         text: generatedText,
         emotion: emotionAnalysis.primaryEmotion,
         confidence: emotionAnalysis.confidence,
+        filtered,
+        contentWarnings: contentWarnings.length > 0 ? contentWarnings : undefined,
         usage: response.usage ? {
           promptTokens: response.usage.prompt_tokens,
           completionTokens: response.usage.completion_tokens,
