@@ -171,3 +171,35 @@ export interface BiometricData {
   lastUsed: Date;
   isActive: boolean;
 }
+
+// Additional types for test compatibility
+export interface ContentFilterResult {
+  isAllowed: boolean;
+  rating: ContentRating;
+  filteredContent?: string;
+  processingTime: number;
+  isApproved: boolean;
+}
+
+export interface SecurityAuditLog extends AuditLog {
+  eventType: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface PrivacySettings {
+  dataCollection: boolean;
+  analytics: boolean;
+  personalization: boolean;
+  shareUsageData: boolean;
+  marketing: boolean;
+  thirdPartySharing: boolean;
+}
+
+export interface DataExportRequest {
+  userId: string;
+  requestType: 'data_export' | 'data_deletion';
+  format: 'json' | 'csv' | 'xml';
+  includePersonalData: boolean;
+  includeConversations: boolean;
+  includeAnalytics: boolean;
+}

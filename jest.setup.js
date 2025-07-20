@@ -35,15 +35,22 @@ jest.mock('react-native-vector-icons/FontAwesome', () => 'FontAwesome');
 jest.mock('react-native-vector-icons/Ionicons', () => 'Ionicons');
 
 // Mock React Native Sound
-jest.mock('react-native-sound', () => ({
-  Sound: jest.fn(() => ({
-    play: jest.fn(),
-    stop: jest.fn(),
-    pause: jest.fn(),
-    setVolume: jest.fn(),
-    setSpeed: jest.fn(),
-  })),
-}));
+jest.mock('react-native-sound', () => {
+  const mockSound = {
+    setCategory: jest.fn(),
+    setMode: jest.fn(),
+    setActive: jest.fn(),
+    MAIN_BUNDLE: '',
+    DOCUMENT: '',
+    LIBRARY: '',
+    CACHES: '',
+  };
+  
+  mockSound.default = mockSound;
+  
+  return mockSound;
+});
+
 
 // Mock React Native Elements
 jest.mock('react-native-elements', () => ({
@@ -287,6 +294,69 @@ global.Audio = jest.fn(() => ({
   paused: true,
   ended: false,
 }));
+
+// Mock react-native-fs
+jest.mock('react-native-fs', () => ({
+  DocumentDirectoryPath: '/mock/documents',
+  CachesDirectoryPath: '/mock/caches',
+  TemporaryDirectoryPath: '/mock/tmp',
+  ExternalDirectoryPath: '/mock/external',
+  readFile: jest.fn(() => Promise.resolve('mock file content')),
+  writeFile: jest.fn(() => Promise.resolve()),
+  exists: jest.fn(() => Promise.resolve(true)),
+  mkdir: jest.fn(() => Promise.resolve()),
+  readDir: jest.fn(() => Promise.resolve([])),
+  stat: jest.fn(() => Promise.resolve({ isFile: () => true, isDirectory: () => false })),
+  unlink: jest.fn(() => Promise.resolve()),
+  copyFile: jest.fn(() => Promise.resolve()),
+  moveFile: jest.fn(() => Promise.resolve()),
+  downloadFile: jest.fn(() => ({
+    promise: Promise.resolve({ statusCode: 200 }),
+    jobId: 1,
+  })),
+}));
+
+// Mock microsoft-cognitiveservices-speech-sdk
+jest.mock('microsoft-cognitiveservices-speech-sdk', () => ({
+  SpeechConfig: {
+    fromSubscription: jest.fn(() => ({
+      speechSynthesisVoiceName: 'ja-JP-KeitaNeural',
+      speechSynthesisOutputFormat: 'mp3',
+    })),
+  },
+  SpeechSynthesizer: jest.fn(() => ({
+    speakTextAsync: jest.fn((text, onResult, onError) => {
+      setTimeout(() => onResult({ audioData: new ArrayBuffer(8) }), 100);
+    }),
+    close: jest.fn(),
+  })),
+  SpeechSynthesisOutputFormat: {
+    Audio24Khz16BitMonoPcm: 'Audio24Khz16BitMonoPcm',
+  },
+  ResultReason: {
+    SynthesizingAudioCompleted: 'SynthesizingAudioCompleted',
+  },
+}));
+
+// Mock openai
+jest.mock('openai', () => {
+  return jest.fn().mockImplementation(() => ({
+    chat: {
+      completions: {
+        create: jest.fn(() => Promise.resolve({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                text: 'モックレスポンス',
+                emotion: 'happy',
+              }),
+            },
+          }],
+        })),
+      },
+    },
+  }));
+});
 
 // Mock URL.createObjectURL
 global.URL = {

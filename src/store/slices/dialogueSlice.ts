@@ -191,7 +191,7 @@ const dialogueSlice = createSlice({
             messages: action.payload.messages,
             startTime: action.payload.startTime,
             endTime: action.payload.endTime,
-            emotionProgression: action.payload.metadata.emotionProgression,
+            emotionProgression: action.payload.metadata.emotionProgression as EmotionState[],
           };
           state.currentScenario = action.payload.scenario;
           // Set emotion state to the last emotion in progression
@@ -245,4 +245,5 @@ export const selectDialogueScenario = (state: RootState) => state.dialogue.curre
 export const selectIsDialogueLoading = (state: RootState) => state.dialogue.isLoading;
 export const selectDialogueError = (state: RootState) => state.dialogue.error;
 
+export {dialogueSlice};
 export default dialogueSlice.reducer;

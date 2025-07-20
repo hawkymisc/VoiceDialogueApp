@@ -8,9 +8,16 @@ import {
 } from '../../types/Dialogue';
 
 // Mock dependencies
-jest.mock('../../services/contentFilterService');
+jest.mock('../../services/contentFilterService', () => ({
+  contentFilterService: {
+    scanContent: jest.fn(),
+    initialize: jest.fn(),
+    applyAgeRating: jest.fn(),
+    setCustomRules: jest.fn(),
+  },
+}));
 
-const mockContentFilterService = contentFilterService as jest.Mocked<typeof contentFilterService>;
+const mockContentFilterService = require('../../services/contentFilterService').contentFilterService;
 
 // Mock fetch for OpenAI API
 global.fetch = jest.fn();

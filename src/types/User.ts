@@ -27,6 +27,12 @@ export interface UserPreferences {
   relationshipSettings: Record<CharacterType, RelationshipSettings>;
   language: 'ja' | 'en';
   theme: 'light' | 'dark' | 'auto';
+  // Additional properties for test compatibility
+  voiceEnabled?: boolean;
+  notificationsEnabled?: boolean;
+  autoSave?: boolean;
+  fontSize?: string;
+  animationSpeed?: string;
 }
 
 export interface UserStatistics {

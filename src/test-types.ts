@@ -48,13 +48,13 @@ const testCharacter: Character = {
 // Test Dialogue types
 const testMessage: DialogueMessage = {
   id: 'msg-001',
-  speakerId: 'aoi',
+  sender: 'character',
   text: 'こんにちは！今日はいい天気ですね。',
-  emotion: 'joy',
-  timestamp: new Date(),
+  emotion: 'happy',
+  timestamp: Date.now(),
   audioUrl: '/audio/msg-001.mp3',
   metadata: {
-    scenario: 'daily-conversation',
+    scenario: 'daily',
     context: ['greeting', 'weather'],
     userRating: 5,
     isFavorite: true,
@@ -69,7 +69,7 @@ const testUserProfile: UserProfile = {
   createdAt: new Date(),
   lastLoginAt: new Date(),
   preferences: {
-    favoriteScenarios: ['daily-conversation', 'romantic-scene'],
+    favoriteScenarios: ['daily', 'romance'],
     characterCustomizations: {
       aoi: {
         personality: {
@@ -166,14 +166,14 @@ const testUserProfile: UserProfile = {
     lastActiveDate: new Date(),
     totalPlayTime: 375,
     conversationsByScenario: {
-      'daily-conversation': 8,
-      'work-scene': 3,
-      'special-event': 2,
-      'emotional-scene': 1,
-      'comedy-scene': 1,
-      'romantic-scene': 0,
+      'daily': 8,
+      'work': 3,
+      'special': 2,
+      'drama': 1,
+      'comedy': 1,
+      'romance': 0,
     },
-    favoriteEmotions: ['joy', 'embarrassed'],
+    favoriteEmotions: ['happy', 'embarrassed'],
     achievementCount: 5,
   },
   subscriptionTier: 'premium',
@@ -184,7 +184,7 @@ const testUserProfile: UserProfile = {
 const testVoiceRequest: VoiceSynthesisRequest = {
   text: 'こんにちは、元気ですか？',
   characterId: 'aoi',
-  emotion: 'joy',
+  emotion: 'happy',
   speed: 1.0,
   pitch: 75,
   volume: 80,

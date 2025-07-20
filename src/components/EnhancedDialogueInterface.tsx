@@ -85,7 +85,7 @@ const EnhancedDialogueInterface: React.FC<EnhancedDialogueInterfaceProps> = ({
 
         const message = await conversationService.addMessage(conversation.id, initialMessage);
         if (message) {
-          dispatch(addDialogueMessage(message));
+          dispatch(addMessage(message));
           onMessageSent?.(message);
         }
       }
@@ -122,7 +122,7 @@ const EnhancedDialogueInterface: React.FC<EnhancedDialogueInterfaceProps> = ({
           userMessageObj
         );
         if (savedUserMessage) {
-          dispatch(addDialogueMessage(savedUserMessage));
+          dispatch(addMessage(savedUserMessage));
         }
       }
 
@@ -160,8 +160,8 @@ const EnhancedDialogueInterface: React.FC<EnhancedDialogueInterfaceProps> = ({
         );
         
         if (savedCharacterMessage) {
-          dispatch(addDialogueMessage(savedCharacterMessage));
-          dispatch(setCurrentEmotion(response.emotion));
+          dispatch(addMessage(savedCharacterMessage));
+          dispatch(updateEmotionState(response.emotion));
           onMessageSent?.(savedCharacterMessage);
           onEmotionChange?.(response.emotion);
         }

@@ -8,6 +8,9 @@ export type EmotionState =
   | 'surprised'
   | 'embarrassed';
 
+// Alias for backward compatibility
+export type EmotionType = EmotionState;
+
 export type DialogueCategory =
   | 'daily'
   | 'work'
@@ -17,6 +20,9 @@ export type DialogueCategory =
   | 'special';
 
 export type DifficultyLevel = 'easy' | 'medium' | 'hard';
+
+// Alias for backward compatibility
+export type ScenarioType = DialogueCategory;
 
 export interface ContextSettings {
   timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'night' | 'work-hours' | 'any';
@@ -78,4 +84,45 @@ export interface DialogueHistoryEntry {
   messageCount: number;
   emotionProgression: EmotionState[];
   rating?: number;
+}
+
+// Additional missing types for tests
+export interface DialogueRequest {
+  characterId: string;
+  userMessage: string;
+  conversationHistory: DialogueMessage[];
+  scenario?: string;
+  relationshipContext?: string;
+}
+
+export interface DialogueResponse {
+  text: string;
+  emotion: EmotionType;
+  confidence?: number;
+  filtered?: string;
+}
+
+export interface ConversationState {
+  currentConversation: any;
+  conversationHistory: any;
+  isGenerating: boolean;
+  currentSpeaker: string | null;
+  availableScenarios: string[];
+  error: string | null;
+}
+
+export interface Conversation {
+  id: string;
+  userId: string;
+  participants: string[];
+  messages: DialogueMessage[];
+  scenario: string;
+  startTime: Date;
+  metadata: any;
+}
+
+export interface ConversationHistory {
+  conversations: Conversation[];
+  totalCount: number;
+  favoriteConversations: string[];
 }

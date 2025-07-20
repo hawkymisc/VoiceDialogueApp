@@ -94,13 +94,13 @@ describe('validation', () => {
 
   describe('validateUserProfile', () => {
     it('should validate correct user profile', () => {
-      const validProfile: UserProfile = {
+      const validProfile = {
         id: 'user-123',
         name: 'Test User',
         email: 'test@example.com',
         avatar: 'avatar.jpg',
-        createdAt: Date.now() - 86400000,
-        lastActiveAt: Date.now(),
+        createdAt: new Date(Date.now() - 86400000),
+        lastActiveAt: new Date(Date.now()),
       };
 
       expect(validateUserProfile(validProfile)).toBe(true);
@@ -120,13 +120,13 @@ describe('validation', () => {
     });
 
     it('should handle future timestamps', () => {
-      const invalidProfile: UserProfile = {
+      const invalidProfile = {
         id: 'user-123',
         name: 'Test User',
         email: 'test@example.com',
         avatar: 'avatar.jpg',
-        createdAt: Date.now() + 86400000, // Future timestamp
-        lastActiveAt: Date.now(),
+        createdAt: new Date(Date.now() + 86400000), // Future timestamp
+        lastActiveAt: new Date(Date.now()),
       };
 
       expect(validateUserProfile(invalidProfile)).toBe(false);
@@ -135,7 +135,7 @@ describe('validation', () => {
 
   describe('validateUserPreferences', () => {
     it('should validate correct user preferences', () => {
-      const validPreferences: UserPreferences = {
+      const validPreferences = {
         theme: 'dark',
         language: 'ja',
         voiceEnabled: true,

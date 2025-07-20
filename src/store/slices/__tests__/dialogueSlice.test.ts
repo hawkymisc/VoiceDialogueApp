@@ -12,9 +12,9 @@ import dialogueSlice, {
   loadDialogueHistory,
   restoreConversation,
 } from '../dialogueSlice';
-import {DialogueScenario, DialogueMessage} from '../../../types/Dialogue';
+import {DialogueScenario, DialogueMessage, DialogueState} from '../../../types/Dialogue';
 import {openaiService} from '../../../services/openaiService';
-import {historyService} from '../../../services/historyService';
+import {historyService, ConversationSaveData} from '../../../services/historyService';
 
 // Mock services
 jest.mock('../../../services/openaiService');
@@ -39,7 +39,7 @@ describe('Dialogue Slice', () => {
     emotion: 'neutral',
   };
 
-  let store: ReturnType<typeof configureStore>;
+  let store: ReturnType<typeof configureStore<{dialogue: DialogueState}>>;
 
   beforeEach(() => {
     store = configureStore({
@@ -236,7 +236,7 @@ describe('Dialogue Slice', () => {
         conversationHistory: [],
       });
 
-      await store.dispatch(action);
+      await store.dispatch(action as any);
       const state = store.getState().dialogue;
 
       expect(state.isLoading).toBe(false);
@@ -259,7 +259,7 @@ describe('Dialogue Slice', () => {
         conversationHistory: [],
       });
 
-      await store.dispatch(action);
+      await store.dispatch(action as any);
       const state = store.getState().dialogue;
 
       expect(state.isLoading).toBe(false);
@@ -273,7 +273,7 @@ describe('Dialogue Slice', () => {
         conversationHistory: [],
       });
 
-      store.dispatch(action);
+      store.dispatch(action as any);
       const state = store.getState().dialogue;
 
       expect(state.isLoading).toBe(true);
@@ -298,7 +298,7 @@ describe('Dialogue Slice', () => {
       (historyService.loadDialogueHistory as jest.Mock).mockResolvedValue(mockHistory);
 
       const action = loadDialogueHistory();
-      await store.dispatch(action);
+      await store.dispatch(action as any);
       const state = store.getState().dialogue;
 
       expect(state.dialogueHistory).toEqual(mockHistory);
@@ -325,7 +325,7 @@ describe('Dialogue Slice', () => {
       (historyService.loadConversationById as jest.Mock).mockResolvedValue(mockConversation);
 
       const action = restoreConversation('conv-1');
-      await store.dispatch(action);
+      await store.dispatch(action as any);
       const state = store.getState().dialogue;
 
       expect(state.currentDialogue).toBeTruthy();
@@ -341,7 +341,7 @@ describe('Dialogue Slice', () => {
       (historyService.loadConversationById as jest.Mock).mockResolvedValue(null);
 
       const action = restoreConversation('nonexistent');
-      await store.dispatch(action);
+      await store.dispatch(action as any);
       const state = store.getState().dialogue;
 
       expect(state.currentDialogue).toBeNull();

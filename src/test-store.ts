@@ -4,7 +4,7 @@ import {
   setActiveCharacter,
   updateCharacterPersonality,
 } from './store/slices/characterSlice';
-import {startNewConversation, addMessage} from './store/slices/dialogueSlice';
+import {restoreConversation, addMessage} from './store/slices/dialogueSlice';
 import {setAuthenticated, updatePreferences} from './store/slices/userSlice';
 import {playAudio, setVolume} from './store/slices/audioSlice';
 
@@ -22,9 +22,9 @@ store.dispatch(
 
 // Test dialogue slice
 store.dispatch(
-  startNewConversation({
+  restoreConversation({
     userId: 'user-001',
-    scenario: 'daily-conversation',
+    scenario: 'daily',
     participants: ['aoi', 'shun'],
   }),
 );
@@ -34,8 +34,8 @@ store.dispatch(
     id: 'msg-001',
     speakerId: 'aoi',
     text: 'こんにちは！',
-    emotion: 'joy',
-    timestamp: new Date(),
+    emotion: 'happy',
+    timestamp: Date.now(),
     metadata: {
       scenario: 'daily-conversation',
       context: ['greeting'],

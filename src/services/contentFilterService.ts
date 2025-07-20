@@ -21,6 +21,16 @@ class ContentFilterService {
     this.initializeGuidelines();
   }
 
+  async initialize(): Promise<void> {
+    try {
+      this.isInitialized = true;
+      console.log('ContentFilterService initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize ContentFilterService:', error);
+      throw new Error('ContentFilterService initialization failed');
+    }
+  }
+
   private initializeFilters(): void {
     this.filters = [
       {
@@ -290,17 +300,48 @@ class ContentFilterService {
 
   async scanContent(
     content: string,
+    context: {
+      userId: string;
+      characterId: string;
+      scenarioId: string;
+    }
+  ): Promise<ContentScanResult>;
+  async scanContent(
+    content: string,
     category: ContentCategory,
     userId: string
+  ): Promise<ContentScanResult>;
+  async scanContent(
+    content: string,
+    categoryOrContext: ContentCategory | {
+      userId: string;
+      characterId: string;
+      scenarioId: string;
+    },
+    userId?: string
   ): Promise<ContentScanResult> {
     const startTime = Date.now();
-    const userPreferences = this.userPreferences.get(userId);
+    
+    // パラメータの型を判定して適切に処理
+    let actualUserId: string;
+    let category: ContentCategory = 'dialogue'; // デフォルト値
+    
+    if (typeof categoryOrContext === 'object') {
+      // 新しい形式のコンテキストオブジェクト
+      actualUserId = categoryOrContext.userId;
+    } else {
+      // 従来の形式
+      category = categoryOrContext;
+      actualUserId = userId!;
+    }
+    
+    const userPreferences = this.userPreferences.get(actualUserId);
     
     if (!userPreferences) {
-      await this.initializeUserPreferences(userId);
+      await this.initializeUserPreferences(actualUserId);
     }
 
-    const preferences = this.userPreferences.get(userId)!;
+    const preferences = this.userPreferences.get(actualUserId)!;
     const guideline = this.guidelines[preferences.contentRating];
     
     const result: ContentScanResult = {
@@ -470,6 +511,39 @@ class ContentFilterService {
 
   async getAvailableFilters(): Promise<ContentFilter[]> {
     return [...this.filters];
+  }
+
+  async getFilterSettings(userId: string): Promise<{
+    ageRating: ContentRating;
+    strictMode: boolean;
+    customFilters: ContentFilter[];
+  }> {
+    const preferences = await this.getUserContentPreferences(userId);
+    return {
+      ageRating: preferences?.contentRating || 'general',
+      strictMode: preferences?.parentalControls.isEnabled || false,
+      customFilters: preferences?.customFilters || [],
+    };
+  }
+
+  async updateFilterSettings(userId: string, settings: {
+    ageRating?: ContentRating;
+    strictMode?: boolean;
+    customFilters?: ContentFilter[];
+  }): Promise<void> {
+    const preferences = this.userPreferences.get(userId);
+    if (preferences) {
+      if (settings.ageRating) {
+        preferences.contentRating = settings.ageRating;
+      }
+      if (settings.strictMode !== undefined) {
+        preferences.parentalControls.isEnabled = settings.strictMode;
+      }
+      if (settings.customFilters) {
+        preferences.customFilters = settings.customFilters;
+      }
+      await this.saveUserPreferences(userId);
+    }
   }
 
   private generateContentHash(content: string): string {

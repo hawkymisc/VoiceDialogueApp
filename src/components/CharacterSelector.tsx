@@ -9,6 +9,8 @@ import {
   ScrollView,
 } from 'react-native';
 import {useSelector, useDispatch} from 'react-redux';
+import {useNavigation} from '@react-navigation/native';
+import {StackNavigationProp} from '@react-navigation/stack';
 import {
   selectCharacters,
   selectActiveCharacter,
@@ -22,13 +24,20 @@ import {RELATIONSHIP_TYPES} from '../data/characters';
 interface CharacterSelectorProps {
   onCharacterSelect?: (characterId: CharacterType) => void;
   showRelationshipSettings?: boolean;
+  showStartButton?: boolean;
 }
+
+type NavigationProp = StackNavigationProp<{
+  Dialogue: {characterId: CharacterType; userId: string};
+}>;
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   onCharacterSelect,
   showRelationshipSettings = true,
+  showStartButton = false,
 }) => {
   const dispatch = useDispatch();
+  const navigation = useNavigation<NavigationProp>();
   const characters = useSelector(selectCharacters);
   const activeCharacter = useSelector(selectActiveCharacter);
   const relationshipSettings = useSelector(selectRelationshipSettings);
@@ -42,6 +51,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   const handleRelationshipChange = (type: RelationshipType) => {
     dispatch(setRelationshipType(type));
     setShowRelationshipModal(false);
+  };
+
+  const handleStartDialogue = () => {
+    if (activeCharacter) {
+      // Generate a simple user ID for demo purposes
+      const userId = `user_${Date.now()}`;
+      
+      navigation.navigate('Dialogue', {
+        characterId: activeCharacter,
+        userId: userId,
+      });
+    }
   };
 
   return (
@@ -155,6 +176,19 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           );
         })}
       </View>
+
+      {/* Start Dialogue Button */}
+      {showStartButton && activeCharacter && (
+        <View style={styles.startButtonContainer}>
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={handleStartDialogue}>
+            <Text style={styles.startButtonText}>
+              {characters[activeCharacter]?.name}と対話を始める
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Relationship Selection Modal */}
       <Modal
@@ -431,6 +465,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  // Start button styles
+  startButtonContainer: {
+    marginTop: 20,
+    paddingHorizontal: 16,
+  },
+  startButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  startButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

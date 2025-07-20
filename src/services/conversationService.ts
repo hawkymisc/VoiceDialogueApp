@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DialogueMessage,
   Conversation,
@@ -682,8 +683,14 @@ class ConversationService {
 
   private async saveConversation(conversation: Conversation): Promise<void> {
     try {
-      await storageService.saveConversationHistory(conversation.id, conversation.messages);
-      // Additional conversation metadata could be saved separately
+      // Save the full conversation object to AsyncStorage
+      const conversationData = JSON.stringify(conversation);
+      await AsyncStorage.setItem(`conversation_${conversation.id}`, conversationData);
+      
+      // Also save to favorites list if needed
+      if (conversation.isFavorite) {
+        await this.updateFavoritesList(conversation.id, true);
+      }
     } catch (error) {
       console.error('Failed to save conversation:', error);
     }
@@ -691,14 +698,22 @@ class ConversationService {
 
   private async loadConversationFromStorage(conversationId: string): Promise<Conversation | null> {
     try {
-      const messages = await storageService.getConversationHistory(conversationId);
-      if (messages.length === 0) {
+      const conversationData = await AsyncStorage.getItem(`conversation_${conversationId}`);
+      if (!conversationData) {
         return null;
       }
 
-      // Reconstruct conversation from messages
-      // This is a simplified implementation
-      return null;
+      const conversation = JSON.parse(conversationData);
+      
+      // Convert string dates back to Date objects
+      conversation.startedAt = new Date(conversation.startedAt);
+      conversation.lastMessageAt = new Date(conversation.lastMessageAt);
+      conversation.messages = conversation.messages.map((msg: any) => ({
+        ...msg,
+        timestamp: new Date(msg.timestamp),
+      }));
+
+      return conversation;
     } catch (error) {
       console.error('Failed to load conversation from storage:', error);
       return null;
@@ -707,10 +722,30 @@ class ConversationService {
 
   private async deleteConversationFromStorage(conversationId: string): Promise<void> {
     try {
-      // Delete conversation data from storage
-      // Implementation depends on storage structure
+      await AsyncStorage.removeItem(`conversation_${conversationId}`);
+      await this.updateFavoritesList(conversationId, false);
     } catch (error) {
       console.error('Failed to delete conversation from storage:', error);
+    }
+  }
+
+  private async updateFavoritesList(conversationId: string, isFavorite: boolean): Promise<void> {
+    try {
+      const favoritesData = await AsyncStorage.getItem('favorite_conversations');
+      const favorites: string[] = favoritesData ? JSON.parse(favoritesData) : [];
+      
+      if (isFavorite && !favorites.includes(conversationId)) {
+        favorites.push(conversationId);
+      } else if (!isFavorite) {
+        const index = favorites.indexOf(conversationId);
+        if (index > -1) {
+          favorites.splice(index, 1);
+        }
+      }
+      
+      await AsyncStorage.setItem('favorite_conversations', JSON.stringify(favorites));
+    } catch (error) {
+      console.error('Failed to update favorites list:', error);
     }
   }
 }

@@ -23,10 +23,17 @@ describe('Full System Integration Tests', () => {
     jest.clearAllMocks();
     
     // Mock storage service
-    mockStorageService.get.mockResolvedValue(null);
-    mockStorageService.save.mockResolvedValue();
-    mockStorageService.remove.mockResolvedValue();
-    mockStorageService.clear.mockResolvedValue();
+    mockStorageService.getUserProfile.mockResolvedValue(null);
+    mockStorageService.saveUserProfile.mockResolvedValue();
+    mockStorageService.getUserPreferences.mockResolvedValue(null);
+    mockStorageService.saveUserPreferences.mockResolvedValue();
+    mockStorageService.getFavoriteConversations.mockResolvedValue([]);
+    mockStorageService.saveFavoriteConversations.mockResolvedValue();
+    mockStorageService.getUnlockedContent.mockResolvedValue([]);
+    mockStorageService.saveUnlockedContent.mockResolvedValue();
+    mockStorageService.clearAllData.mockResolvedValue();
+    mockStorageService.exportData.mockResolvedValue('{}');
+    mockStorageService.importData.mockResolvedValue();
 
     // Mock OpenAI API
     mockFetch.mockResolvedValue({
@@ -66,45 +73,33 @@ describe('Full System Integration Tests', () => {
         scenarioId: 'daily_morning',
       });
       
-      expect(filterResult.isApproved).toBe(true);
+      expect(filterResult.approved).toBe(true);
 
       // 3. Generate AI response
       const dialogueResponse = await openaiService.generateDialogue({
-        userId: testUserId,
-        userMessage,
         characterId: 'aoi',
-        personality: {
-          aggressiveness: 20,
-          kindness: 90,
-          tsundere_level: 30,
-          shyness: 60,
-        },
-        conversationContext: {
-          character_id: 'aoi',
-          scenario_id: 'daily_morning',
-          conversation_history: [],
-          current_emotion: 'neutral',
-          relationship_level: 'friend',
-          time_of_day: 'morning',
-          location: 'home',
-          previous_topics: [],
-        },
-        scenarioId: 'daily_morning',
+        userMessage,
+        conversationHistory: [],
+        scenario: 'daily_morning',
+        relationshipContext: 'friend'
       });
 
-      expect(dialogueResponse.message).toBeTruthy();
-      expect(dialogueResponse.isFiltered).toBe(false);
+      expect(dialogueResponse.text).toBeTruthy();
+      expect(dialogueResponse.filtered).toBe(undefined);
 
       // 4. Save conversation
-      const conversationId = await conversationService.saveConversation({
-        userId: testUserId,
-        characterId: 'aoi',
-        scenarioId: 'daily_morning',
-        userMessage,
-        characterResponse: dialogueResponse.message,
-        emotion: dialogueResponse.emotion,
-        timestamp: new Date(),
+      const conversation = await conversationService.createConversation('aoi', 'daily_morning', 'Morning Chat');
+      await conversationService.addMessage(conversation.id, {
+        text: userMessage,
+        sender: 'user',
+        emotion: 'neutral',
       });
+      await conversationService.addMessage(conversation.id, {
+        text: dialogueResponse.text,
+        sender: 'character',
+        emotion: dialogueResponse.emotion,
+      });
+      const conversationId = conversation.id;
 
       expect(conversationId).toBeTruthy();
 
@@ -456,7 +451,7 @@ describe('Full System Integration Tests', () => {
         endDate: new Date(),
       });
 
-      expect(filterResult.isApproved).toBe(true);
+      expect(filterResult.approved).toBe(true);
       expect(encrypted).toBeTruthy();
       expect(auditLogs).toHaveLength(1);
     });

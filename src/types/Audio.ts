@@ -97,3 +97,6 @@ export interface AudioState {
   isInitialized: boolean;
   supportedFormats: string[];
 }
+
+// Additional types for test compatibility
+export type PlaybackState = 'playing' | 'paused' | 'stopped';

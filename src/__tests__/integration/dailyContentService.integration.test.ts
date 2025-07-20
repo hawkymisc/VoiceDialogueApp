@@ -4,11 +4,36 @@ import {scenarioService} from '../../services/scenarioService';
 import {DailyContent, SpecialEvent, CharacterMoment} from '../../types/Engagement';
 
 // Mock dependencies
-jest.mock('../../services/storageService');
-jest.mock('../../services/scenarioService');
+jest.mock('../../services/storageService', () => ({
+  storageService: {
+    saveUserProfile: jest.fn(),
+    getUserProfile: jest.fn(),
+    saveUserPreferences: jest.fn(),
+    getUserPreferences: jest.fn(),
+    saveFavoriteConversations: jest.fn(),
+    getFavoriteConversations: jest.fn(),
+    saveUnlockedContent: jest.fn(),
+    getUnlockedContent: jest.fn(),
+    clearAllData: jest.fn(),
+    exportData: jest.fn(),
+    importData: jest.fn(),
+    get: jest.fn(),
+    save: jest.fn(),
+  },
+}));
 
-const mockStorageService = storageService as jest.Mocked<typeof storageService>;
-const mockScenarioService = scenarioService as jest.Mocked<typeof scenarioService>;
+jest.mock('../../services/scenarioService', () => ({
+  scenarioService: {
+    getScenarios: jest.fn(),
+    getScenarioById: jest.fn(),
+    createCustomScenario: jest.fn(),
+    updateProgress: jest.fn(),
+    completeScenario: jest.fn(),
+  },
+}));
+
+const mockStorageService = require('../../services/storageService').storageService;
+const mockScenarioService = require('../../services/scenarioService').scenarioService;
 
 describe('DailyContentService Integration Tests', () => {
   const testUserId = 'test-user-123';

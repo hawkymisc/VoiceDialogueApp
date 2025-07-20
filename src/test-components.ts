@@ -49,12 +49,7 @@ const testCharacter: Character = {
   backstory: '純真で感情豊かな青年',
 };
 
-const testEmotionState: EmotionState = {
-  primary: 'joy',
-  intensity: 0.8,
-  secondary: 'embarrassed',
-  confidence: 0.9,
-};
+const testEmotionState: EmotionState = 'happy';
 
 // Test data for DialogueInterface component
 const testConversationState: ConversationState = {
@@ -121,10 +116,12 @@ export const validateCharacterDisplay = () => {
   // Test 1: Component accepts required props
   console.log(
     '  - ✅ Accepts Character, EmotionState, isActive, onInteraction props',
+  );
 
   // Test 2: Component supports Live2D placeholder
   console.log(
     '  - ✅ Includes Live2D container placeholder for future integration',
+  );
 
   // Test 3: Component shows emotion indicators
   console.log(
@@ -140,6 +137,7 @@ export const validateCharacterDisplay = () => {
   // Test 6: Component shows personality traits
   console.log(
     '  - ✅ Displays character personality traits (aggressiveness, kindness, etc.)',
+  );
 
   return true;
 };
@@ -150,6 +148,7 @@ export const validateDialogueInterface = () => {
   // Test 1: Component accepts required props
   console.log(
     '  - ✅ Accepts ConversationState, onUserInput, onScenarioSelect props',
+  );
 
   // Test 2: Component supports scenario selection
   console.log('  - ✅ Provides scenario selection with expandable UI');
@@ -180,6 +179,7 @@ export const validateAudioController = () => {
   // Test 1: Component accepts required props
   console.log(
     '  - ✅ Accepts audio URL, playback state, and control callbacks',
+  );
 
   // Test 2: Component supports volume control (requirement 3.4)
   console.log('  - ✅ Provides volume adjustment with slider and presets');
@@ -222,6 +222,7 @@ export const validateRequirements = () => {
   );
   console.log(
     '    * Speaking animation provides visual feedback during audio playback',
+  );
 
   console.log('');
   console.log('📋 Task 3 Implementation Summary:');
@@ -233,6 +234,7 @@ export const validateRequirements = () => {
   );
   console.log(
     '  ✅ 音声コントロール用のUIコンポーネント作成 (AudioController)',
+  );
 
   return true;
 };

@@ -1,53 +1,95 @@
 import userReducer, {
   updateUserProfile,
   updateUserPreferences,
-  addFavoriteCharacter,
-  removeFavoriteCharacter,
-  addDialogueHistory,
-  clearDialogueHistory,
-  updateUserStats,
-  setUserLoading,
+  addFavoriteConversation,
+  removeFavoriteConversation,
+  updateStatistics,
   clearUserError,
-  selectUserProfile,
-  selectUserPreferences,
-  selectFavoriteCharacters,
-  selectDialogueHistory,
-  selectUserStats,
+  setAuthenticated,
+  updatePreferences,
+  unlockContent,
+  incrementConversationCount,
+  updateLastActiveDate,
+  resetUserState,
 } from '../userSlice';
-import {UserState, UserProfile, UserPreferences, DialogueHistoryEntry, UserStats} from '../../../types/User';
+import {UserState, UserProfile, UserPreferences} from '../../../types/User';
 import {CharacterType} from '../../../types/Character';
 
 describe('userSlice', () => {
   const initialState: UserState = {
-    profile: {
-      id: '',
-      name: '',
-      email: '',
-      avatar: '',
-      createdAt: 0,
-      lastActiveAt: 0,
-    },
+    profile: null,
+    isAuthenticated: false,
+    isLoading: false,
+    error: null,
+    favoriteConversations: [],
+    unlockedContent: [],
+  };
+
+  const mockProfile: UserProfile = {
+    id: 'user-123',
+    username: 'test_user',
+    email: 'test@example.com',
+    createdAt: new Date('2023-01-01'),
+    lastLoginAt: new Date(),
     preferences: {
-      theme: 'light',
+      favoriteScenarios: ['daily'],
+      characterCustomizations: {
+        aoi: {},
+        shun: {},
+      } as Record<CharacterType, Partial<any>>,
+      audioSettings: {
+        volume: 80,
+        speed: 1.0,
+        autoPlay: true,
+        enableSoundEffects: true,
+        preferredVoiceQuality: 'standard',
+      },
+      privacySettings: {
+        shareConversations: false,
+        allowDataCollection: true,
+        showOnlineStatus: true,
+        enableAnalytics: true,
+        ageVerified: true,
+      },
+      relationshipSettings: {
+        aoi: {
+          type: 'strangers',
+          intimacyLevel: 0,
+          trustLevel: 0,
+        },
+        shun: {
+          type: 'strangers',
+          intimacyLevel: 0,
+          trustLevel: 0,
+        },
+      },
       language: 'ja',
+      theme: 'light',
       voiceEnabled: true,
       notificationsEnabled: true,
       autoSave: true,
       fontSize: 'medium',
       animationSpeed: 'normal',
     },
-    favoriteCharacters: [],
-    dialogueHistory: [],
-    stats: {
-      totalDialogues: 0,
-      totalMessages: 0,
-      favoriteCharacterUsage: {},
-      averageDialogueLength: 0,
-      longestDialogue: 0,
-      mostUsedEmotions: {},
+    statistics: {
+      totalConversations: 0,
+      favoriteCharacter: null,
+      averageSessionLength: 0,
+      lastActiveDate: new Date(),
+      totalPlayTime: 0,
+      conversationsByScenario: {
+        daily: 0,
+        work: 0,
+        romance: 0,
+        comedy: 0,
+        drama: 0,
+        special: 0,
+      },
+      favoriteEmotions: [],
+      achievementCount: 0,
     },
-    isLoading: false,
-    error: null,
+    subscriptionTier: 'free',
+    isActive: true,
   };
 
   it('should return the initial state', () => {
@@ -55,257 +97,256 @@ describe('userSlice', () => {
   });
 
   describe('updateUserProfile', () => {
-    it('should update user profile', () => {
-      const profileUpdate: Partial<UserProfile> = {
-        name: 'Test User',
-        email: 'test@example.com',
+    it('should handle fulfilled update user profile action', () => {
+      const stateWithProfile = {
+        ...initialState,
+        profile: mockProfile,
       };
 
-      const actual = userReducer(initialState, updateUserProfile(profileUpdate));
+      const updatedProfile: UserProfile = {
+        ...mockProfile,
+        username: 'updated_user',
+        email: 'updated@example.com',
+      };
 
-      expect(actual.profile.name).toBe('Test User');
-      expect(actual.profile.email).toBe('test@example.com');
-      expect(actual.profile.id).toBe(''); // Should preserve other fields
+      const action = {
+        type: updateUserProfile.fulfilled.type,
+        payload: updatedProfile,
+      };
+
+      const actual = userReducer(stateWithProfile, action);
+
+      expect(actual.profile?.username).toBe('updated_user');
+      expect(actual.profile?.email).toBe('updated@example.com');
+      expect(actual.isLoading).toBe(false);
     });
 
-    it('should update lastActiveAt when profile is updated', () => {
-      const profileUpdate: Partial<UserProfile> = {
-        name: 'Active User',
+    it('should handle pending update user profile action', () => {
+      const action = {
+        type: updateUserProfile.pending.type,
       };
 
-      const actual = userReducer(initialState, updateUserProfile(profileUpdate));
+      const actual = userReducer(initialState, action);
 
-      expect(actual.profile.lastActiveAt).toBeGreaterThan(0);
+      expect(actual.isLoading).toBe(true);
+      expect(actual.error).toBeNull();
+    });
+
+    it('should handle rejected update user profile action', () => {
+      const action = {
+        type: updateUserProfile.rejected.type,
+        payload: 'Update failed',
+      };
+
+      const actual = userReducer(initialState, action);
+
+      expect(actual.isLoading).toBe(false);
+      expect(actual.error).toBe('Update failed');
     });
   });
 
-  describe('updateUserPreferences', () => {
+  describe('updatePreferences', () => {
     it('should update user preferences', () => {
+      const stateWithProfile = {
+        ...initialState,
+        profile: mockProfile,
+      };
+
       const preferencesUpdate: Partial<UserPreferences> = {
         theme: 'dark',
         voiceEnabled: false,
         fontSize: 'large',
       };
 
-      const actual = userReducer(initialState, updateUserPreferences(preferencesUpdate));
+      const actual = userReducer(stateWithProfile, updatePreferences(preferencesUpdate));
 
-      expect(actual.preferences.theme).toBe('dark');
-      expect(actual.preferences.voiceEnabled).toBe(false);
-      expect(actual.preferences.fontSize).toBe('large');
-      expect(actual.preferences.language).toBe('ja'); // Should preserve other fields
+      expect(actual.profile?.preferences.theme).toBe('dark');
+      expect(actual.profile?.preferences.voiceEnabled).toBe(false);
+      expect(actual.profile?.preferences.fontSize).toBe('large');
+      expect(actual.profile?.preferences.language).toBe('ja'); // Should preserve other fields
+    });
+
+    it('should handle async updateUserPreferences fulfilled', () => {
+      const stateWithProfile = {
+        ...initialState,
+        profile: mockProfile,
+      };
+
+      const updatedPreferences: UserPreferences = {
+        ...mockProfile.preferences,
+        theme: 'dark',
+        voiceEnabled: false,
+      };
+
+      const action = {
+        type: updateUserPreferences.fulfilled.type,
+        payload: updatedPreferences,
+      };
+
+      const actual = userReducer(stateWithProfile, action);
+
+      expect(actual.profile?.preferences).toEqual(updatedPreferences);
     });
   });
 
-  describe('addFavoriteCharacter', () => {
-    it('should add character to favorites', () => {
-      const characterId: CharacterType = 'aoi';
-      const actual = userReducer(initialState, addFavoriteCharacter(characterId));
+  describe('addFavoriteConversation', () => {
+    it('should add conversation to favorites', () => {
+      const conversationId = 'conv-123';
+      const actual = userReducer(initialState, addFavoriteConversation(conversationId));
 
-      expect(actual.favoriteCharacters).toContain(characterId);
-      expect(actual.favoriteCharacters).toHaveLength(1);
+      expect(actual.favoriteConversations).toContain(conversationId);
+      expect(actual.favoriteConversations).toHaveLength(1);
     });
 
-    it('should not add duplicate character to favorites', () => {
+    it('should not add duplicate conversation to favorites', () => {
       const stateWithFavorite = {
         ...initialState,
-        favoriteCharacters: ['aoi' as CharacterType],
+        favoriteConversations: ['conv-123'],
       };
 
-      const actual = userReducer(stateWithFavorite, addFavoriteCharacter('aoi'));
+      const actual = userReducer(stateWithFavorite, addFavoriteConversation('conv-123'));
 
-      expect(actual.favoriteCharacters).toHaveLength(1);
-      expect(actual.favoriteCharacters).toContain('aoi');
+      expect(actual.favoriteConversations).toHaveLength(1);
+      expect(actual.favoriteConversations).toContain('conv-123');
     });
   });
 
-  describe('removeFavoriteCharacter', () => {
-    it('should remove character from favorites', () => {
+  describe('removeFavoriteConversation', () => {
+    it('should remove conversation from favorites', () => {
       const stateWithFavorites = {
         ...initialState,
-        favoriteCharacters: ['aoi' as CharacterType, 'shun' as CharacterType],
+        favoriteConversations: ['conv-123', 'conv-456'],
       };
 
-      const actual = userReducer(stateWithFavorites, removeFavoriteCharacter('aoi'));
+      const actual = userReducer(stateWithFavorites, removeFavoriteConversation('conv-123'));
 
-      expect(actual.favoriteCharacters).toHaveLength(1);
-      expect(actual.favoriteCharacters).toContain('shun');
-      expect(actual.favoriteCharacters).not.toContain('aoi');
+      expect(actual.favoriteConversations).toHaveLength(1);
+      expect(actual.favoriteConversations).toContain('conv-456');
+      expect(actual.favoriteConversations).not.toContain('conv-123');
     });
 
-    it('should handle removing non-existent character', () => {
+    it('should handle removing non-existent conversation', () => {
       const stateWithOneFavorite = {
         ...initialState,
-        favoriteCharacters: ['aoi' as CharacterType],
+        favoriteConversations: ['conv-123'],
       };
 
-      const actual = userReducer(stateWithOneFavorite, removeFavoriteCharacter('shun'));
+      const actual = userReducer(stateWithOneFavorite, removeFavoriteConversation('conv-999'));
 
-      expect(actual.favoriteCharacters).toHaveLength(1);
-      expect(actual.favoriteCharacters).toContain('aoi');
+      expect(actual.favoriteConversations).toHaveLength(1);
+      expect(actual.favoriteConversations).toContain('conv-123');
     });
   });
 
-  describe('addDialogueHistory', () => {
-    it('should add dialogue to history', () => {
-      const historyEntry: DialogueHistoryEntry = {
-        id: 'dialogue-1',
-        characterId: 'aoi',
-        scenario: {
-          id: 'daily',
-          category: 'daily',
-          title: 'Daily Chat',
-          description: 'Normal conversation',
-          initialPrompt: 'Hello',
-          tags: ['casual'],
-          difficulty: 'easy',
-        },
-        startTime: Date.now(),
-        endTime: Date.now() + 60000,
-        messageCount: 10,
-        emotionProgression: ['neutral', 'happy'],
-        rating: 5,
-      };
+  describe('unlockContent', () => {
+    it('should unlock content', () => {
+      const contentId = 'content-123';
+      const actual = userReducer(initialState, unlockContent(contentId));
 
-      const actual = userReducer(initialState, addDialogueHistory(historyEntry));
-
-      expect(actual.dialogueHistory).toHaveLength(1);
-      expect(actual.dialogueHistory[0]).toEqual(historyEntry);
+      expect(actual.unlockedContent).toContain(contentId);
+      expect(actual.unlockedContent).toHaveLength(1);
     });
 
-    it('should maintain chronological order in history', () => {
-      const firstEntry: DialogueHistoryEntry = {
-        id: 'dialogue-1',
-        characterId: 'aoi',
-        scenario: {
-          id: 'daily',
-          category: 'daily',
-          title: 'Daily Chat',
-          description: 'Normal conversation',
-          initialPrompt: 'Hello',
-          tags: ['casual'],
-          difficulty: 'easy',
-        },
-        startTime: Date.now() - 120000,
-        endTime: Date.now() - 60000,
-        messageCount: 5,
-        emotionProgression: ['neutral'],
-        rating: 4,
-      };
-
-      const stateWithHistory = {
+    it('should not add duplicate content', () => {
+      const stateWithUnlocked = {
         ...initialState,
-        dialogueHistory: [firstEntry],
+        unlockedContent: ['content-123'],
       };
 
-      const secondEntry: DialogueHistoryEntry = {
-        id: 'dialogue-2',
-        characterId: 'shun',
-        scenario: {
-          id: 'work',
-          category: 'work',
-          title: 'Work Chat',
-          description: 'Work conversation',
-          initialPrompt: 'Good morning',
-          tags: ['work'],
-          difficulty: 'medium',
-        },
-        startTime: Date.now() - 60000,
-        endTime: Date.now(),
-        messageCount: 8,
-        emotionProgression: ['neutral', 'happy'],
-        rating: 5,
-      };
+      const actual = userReducer(stateWithUnlocked, unlockContent('content-123'));
 
-      const actual = userReducer(stateWithHistory, addDialogueHistory(secondEntry));
-
-      expect(actual.dialogueHistory).toHaveLength(2);
-      expect(actual.dialogueHistory[0]).toEqual(firstEntry);
-      expect(actual.dialogueHistory[1]).toEqual(secondEntry);
+      expect(actual.unlockedContent).toHaveLength(1);
+      expect(actual.unlockedContent).toContain('content-123');
     });
   });
 
-  describe('clearDialogueHistory', () => {
-    it('should clear all dialogue history', () => {
-      const stateWithHistory = {
+  describe('setAuthenticated', () => {
+    it('should set authentication status', () => {
+      const actual = userReducer(initialState, setAuthenticated(true));
+
+      expect(actual.isAuthenticated).toBe(true);
+    });
+
+    it('should clear authentication status', () => {
+      const authenticatedState = {
         ...initialState,
-        dialogueHistory: [
-          {
-            id: 'dialogue-1',
-            characterId: 'aoi' as CharacterType,
-            scenario: {
-              id: 'daily',
-              category: 'daily',
-              title: 'Daily Chat',
-              description: 'Normal conversation',
-              initialPrompt: 'Hello',
-              tags: ['casual'],
-              difficulty: 'easy',
-            },
-            startTime: Date.now() - 120000,
-            endTime: Date.now() - 60000,
-            messageCount: 5,
-            emotionProgression: ['neutral'],
-            rating: 4,
-          },
-        ],
+        isAuthenticated: true,
       };
 
-      const actual = userReducer(stateWithHistory, clearDialogueHistory());
+      const actual = userReducer(authenticatedState, setAuthenticated(false));
 
-      expect(actual.dialogueHistory).toHaveLength(0);
+      expect(actual.isAuthenticated).toBe(false);
     });
   });
 
-  describe('updateUserStats', () => {
-    it('should update user stats', () => {
-      const statsUpdate: Partial<UserStats> = {
-        totalDialogues: 5,
-        totalMessages: 100,
-        averageDialogueLength: 20,
-      };
-
-      const actual = userReducer(initialState, updateUserStats(statsUpdate));
-
-      expect(actual.stats.totalDialogues).toBe(5);
-      expect(actual.stats.totalMessages).toBe(100);
-      expect(actual.stats.averageDialogueLength).toBe(20);
-      expect(actual.stats.longestDialogue).toBe(0); // Should preserve other fields
-    });
-
-    it('should update favorite character usage', () => {
-      const statsUpdate: Partial<UserStats> = {
-        favoriteCharacterUsage: {
-          aoi: 10,
-          shun: 5,
-        },
-      };
-
-      const actual = userReducer(initialState, updateUserStats(statsUpdate));
-
-      expect(actual.stats.favoriteCharacterUsage).toEqual({
-        aoi: 10,
-        shun: 5,
-      });
-    });
-  });
-
-  describe('setUserLoading', () => {
-    it('should set loading state', () => {
-      const actual = userReducer(initialState, setUserLoading(true));
-
-      expect(actual.isLoading).toBe(true);
-    });
-
-    it('should clear error when setting loading to true', () => {
-      const stateWithError = {
+  describe('updateStatistics', () => {
+    it('should update user statistics', () => {
+      const stateWithProfile = {
         ...initialState,
-        error: 'Some error',
+        profile: mockProfile,
       };
 
-      const actual = userReducer(stateWithError, setUserLoading(true));
+      const statsUpdate = {
+        totalConversations: 5,
+        totalPlayTime: 100,
+        averageSessionLength: 20,
+      };
 
-      expect(actual.isLoading).toBe(true);
-      expect(actual.error).toBeNull();
+      const actual = userReducer(stateWithProfile, updateStatistics(statsUpdate));
+
+      expect(actual.profile?.statistics.totalConversations).toBe(5);
+      expect(actual.profile?.statistics.totalPlayTime).toBe(100);
+      expect(actual.profile?.statistics.averageSessionLength).toBe(20);
+      expect(actual.profile?.statistics.achievementCount).toBe(0); // Should preserve other fields
+    });
+
+    it('should not update statistics if no profile', () => {
+      const statsUpdate = {
+        totalConversations: 5,
+      };
+
+      const actual = userReducer(initialState, updateStatistics(statsUpdate));
+
+      expect(actual.profile).toBeNull();
+    });
+  });
+
+  describe('incrementConversationCount', () => {
+    it('should increment conversation count', () => {
+      const stateWithProfile = {
+        ...initialState,
+        profile: mockProfile,
+      };
+
+      const actual = userReducer(stateWithProfile, incrementConversationCount());
+
+      expect(actual.profile?.statistics.totalConversations).toBe(1);
+    });
+
+    it('should not increment if no profile', () => {
+      const actual = userReducer(initialState, incrementConversationCount());
+
+      expect(actual.profile).toBeNull();
+    });
+  });
+
+  describe('updateLastActiveDate', () => {
+    it('should update last active date', () => {
+      const stateWithProfile = {
+        ...initialState,
+        profile: mockProfile,
+      };
+
+      const actual = userReducer(stateWithProfile, updateLastActiveDate());
+
+      expect(actual.profile?.statistics.lastActiveDate).toBeInstanceOf(Date);
+      expect(actual.profile?.lastLoginAt).toBeInstanceOf(Date);
+    });
+
+    it('should not update if no profile', () => {
+      const actual = userReducer(initialState, updateLastActiveDate());
+
+      expect(actual.profile).toBeNull();
     });
   });
 
@@ -322,163 +363,143 @@ describe('userSlice', () => {
     });
   });
 
-  describe('selectors', () => {
-    const mockState = {
-      user: {
-        profile: {
-          id: 'user-123',
-          name: 'Test User',
-          email: 'test@example.com',
-          avatar: 'avatar.jpg',
-          createdAt: Date.now() - 86400000,
-          lastActiveAt: Date.now(),
-        },
-        preferences: {
-          theme: 'dark',
-          language: 'ja',
-          voiceEnabled: true,
-          notificationsEnabled: false,
-          autoSave: true,
-          fontSize: 'large',
-          animationSpeed: 'fast',
-        },
-        favoriteCharacters: ['aoi' as CharacterType, 'shun' as CharacterType],
-        dialogueHistory: [
-          {
-            id: 'dialogue-1',
-            characterId: 'aoi' as CharacterType,
-            scenario: {
-              id: 'daily',
-              category: 'daily',
-              title: 'Daily Chat',
-              description: 'Normal conversation',
-              initialPrompt: 'Hello',
-              tags: ['casual'],
-              difficulty: 'easy',
-            },
-            startTime: Date.now() - 120000,
-            endTime: Date.now() - 60000,
-            messageCount: 5,
-            emotionProgression: ['neutral'],
-            rating: 4,
-          },
-        ],
-        stats: {
-          totalDialogues: 10,
-          totalMessages: 200,
-          favoriteCharacterUsage: {aoi: 6, shun: 4},
-          averageDialogueLength: 20,
-          longestDialogue: 50,
-          mostUsedEmotions: {happy: 30, neutral: 50, sad: 20},
-        },
-        isLoading: false,
-        error: null,
-      },
-    };
+  describe('resetUserState', () => {
+    it('should reset user state to initial state', () => {
+      const stateWithData = {
+        ...initialState,
+        profile: mockProfile,
+        isAuthenticated: true,
+        favoriteConversations: ['conv-1', 'conv-2'],
+        unlockedContent: ['content-1'],
+      };
 
-    it('selectUserProfile should return user profile', () => {
-      expect(selectUserProfile(mockState)).toEqual(mockState.user.profile);
+      const actual = userReducer(stateWithData, resetUserState());
+
+      expect(actual).toEqual(initialState);
+    });
+  });
+
+  describe('async actions', () => {
+    it('should handle login user fulfilled', () => {
+      const loginData = {
+        user: mockProfile,
+        token: 'auth-token',
+      };
+
+      const action = {
+        type: 'user/login/fulfilled',
+        payload: loginData,
+      };
+
+      const actual = userReducer(initialState, action);
+
+      expect(actual.profile).toEqual(mockProfile);
+      expect(actual.isAuthenticated).toBe(true);
+      expect(actual.isLoading).toBe(false);
     });
 
-    it('selectUserPreferences should return user preferences', () => {
-      expect(selectUserPreferences(mockState)).toEqual(mockState.user.preferences);
-    });
+    it('should handle logout user fulfilled', () => {
+      const stateWithUser = {
+        ...initialState,
+        profile: mockProfile,
+        isAuthenticated: true,
+        favoriteConversations: ['conv-1'],
+        unlockedContent: ['content-1'],
+      };
 
-    it('selectFavoriteCharacters should return favorite characters', () => {
-      expect(selectFavoriteCharacters(mockState)).toEqual(mockState.user.favoriteCharacters);
-    });
+      const action = {
+        type: 'user/logout/fulfilled',
+        payload: true,
+      };
 
-    it('selectDialogueHistory should return dialogue history', () => {
-      expect(selectDialogueHistory(mockState)).toEqual(mockState.user.dialogueHistory);
-    });
+      const actual = userReducer(stateWithUser, action);
 
-    it('selectUserStats should return user stats', () => {
-      expect(selectUserStats(mockState)).toEqual(mockState.user.stats);
+      expect(actual.profile).toBeNull();
+      expect(actual.isAuthenticated).toBe(false);
+      expect(actual.favoriteConversations).toEqual([]);
+      expect(actual.unlockedContent).toEqual([]);
     });
   });
 
   describe('error handling', () => {
-    it('should handle profile update errors', () => {
-      const stateWithError = {
-        ...initialState,
-        error: 'Profile update failed',
+    it('should handle profile fetch errors', () => {
+      const action = {
+        type: 'user/fetchProfile/rejected',
+        payload: 'Profile fetch failed',
       };
 
-      expect(stateWithError.error).toBe('Profile update failed');
+      const actual = userReducer(initialState, action);
+
+      expect(actual.error).toBe('Profile fetch failed');
+      expect(actual.isLoading).toBe(false);
+      expect(actual.isAuthenticated).toBe(false);
     });
 
-    it('should handle preferences update errors', () => {
-      const stateWithError = {
-        ...initialState,
-        error: 'Preferences save failed',
+    it('should handle login errors', () => {
+      const action = {
+        type: 'user/login/rejected',
+        payload: 'Invalid credentials',
       };
 
-      expect(stateWithError.error).toBe('Preferences save failed');
+      const actual = userReducer(initialState, action);
+
+      expect(actual.error).toBe('Invalid credentials');
+      expect(actual.isLoading).toBe(false);
+      expect(actual.isAuthenticated).toBe(false);
     });
   });
 
   describe('edge cases', () => {
-    it('should handle empty dialogue history', () => {
-      expect(initialState.dialogueHistory).toHaveLength(0);
-      expect(selectDialogueHistory({user: initialState})).toHaveLength(0);
+    it('should handle empty favorite conversations', () => {
+      expect(initialState.favoriteConversations).toHaveLength(0);
     });
 
-    it('should handle empty favorite characters', () => {
-      expect(initialState.favoriteCharacters).toHaveLength(0);
-      expect(selectFavoriteCharacters({user: initialState})).toHaveLength(0);
+    it('should handle empty unlocked content', () => {
+      expect(initialState.unlockedContent).toHaveLength(0);
     });
 
-    it('should handle partial profile updates', () => {
-      const profileUpdate = {name: 'Updated Name'};
-      const actual = userReducer(initialState, updateUserProfile(profileUpdate));
+    it('should handle actions when profile is null', () => {
+      const actions = [
+        updatePreferences({theme: 'dark'}),
+        updateStatistics({totalConversations: 1}),
+        incrementConversationCount(),
+        updateLastActiveDate(),
+      ];
 
-      expect(actual.profile.name).toBe('Updated Name');
-      expect(actual.profile.email).toBe('');
-      expect(actual.profile.id).toBe('');
+      actions.forEach(action => {
+        const actual = userReducer(initialState, action);
+        expect(actual.profile).toBeNull();
+      });
     });
 
     it('should handle stats with zero values', () => {
-      const statsUpdate: Partial<UserStats> = {
-        totalDialogues: 0,
-        totalMessages: 0,
-        averageDialogueLength: 0,
+      const stateWithProfile = {
+        ...initialState,
+        profile: mockProfile,
       };
 
-      const actual = userReducer(initialState, updateUserStats(statsUpdate));
+      const statsUpdate = {
+        totalConversations: 0,
+        totalPlayTime: 0,
+        averageSessionLength: 0,
+      };
 
-      expect(actual.stats.totalDialogues).toBe(0);
-      expect(actual.stats.totalMessages).toBe(0);
-      expect(actual.stats.averageDialogueLength).toBe(0);
+      const actual = userReducer(stateWithProfile, updateStatistics(statsUpdate));
+
+      expect(actual.profile?.statistics.totalConversations).toBe(0);
+      expect(actual.profile?.statistics.totalPlayTime).toBe(0);
+      expect(actual.profile?.statistics.averageSessionLength).toBe(0);
     });
 
-    it('should handle large dialogue history', () => {
+    it('should handle large favorite conversations list', () => {
       let state = initialState;
       
       for (let i = 0; i < 1000; i++) {
-        const historyEntry: DialogueHistoryEntry = {
-          id: `dialogue-${i}`,
-          characterId: i % 2 === 0 ? 'aoi' : 'shun',
-          scenario: {
-            id: 'test',
-            category: 'daily',
-            title: `Test ${i}`,
-            description: `Test dialogue ${i}`,
-            initialPrompt: 'Hello',
-            tags: ['test'],
-            difficulty: 'easy',
-          },
-          startTime: Date.now() - (1000 - i) * 60000,
-          endTime: Date.now() - (1000 - i) * 60000 + 30000,
-          messageCount: i + 1,
-          emotionProgression: ['neutral'],
-          rating: (i % 5) + 1,
-        };
-        
-        state = userReducer(state, addDialogueHistory(historyEntry));
+        state = userReducer(state, addFavoriteConversation(`conv-${i}`));
       }
 
-      expect(state.dialogueHistory).toHaveLength(1000);
-      expect(state.dialogueHistory[999].id).toBe('dialogue-999');
+      expect(state.favoriteConversations).toHaveLength(1000);
+      expect(state.favoriteConversations[999]).toBe('conv-999');
     });
   });
 });

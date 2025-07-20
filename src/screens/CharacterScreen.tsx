@@ -6,8 +6,8 @@ export const CharacterScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>キャラクター</Text>
-        <CharacterSelector />
+        <Text style={styles.title}>キャラクター選択</Text>
+        <CharacterSelector showStartButton={true} />
       </View>
     </SafeAreaView>
   );
