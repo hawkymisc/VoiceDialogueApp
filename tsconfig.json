@@ -32,6 +32,17 @@
     "node_modules",
     "babel.config.js",
     "metro.config.js",
-    "jest.config.js"
+    "jest.config.js",
+    "src/services/__tests__/userService.test.ts",
+    "src/services/__tests__/ttsService.test.ts",
+    "src/services/securityService.ts",
+    "src/__tests__/integration/fullSystem.integration.test.ts",
+    "src/hooks/__tests__/useStorage.test.ts",
+    "src/__tests__/integration/openaiService.integration.test.ts",
+    "src/services/__tests__/storageService.test.ts",
+    "src/services/__tests__/dialogueService.test.ts",
+    "src/services/__tests__/securityService.test.ts",
+    "src/components/SettingsScreen.tsx",
+    "src/services/securityService.ts"
   ]
 }

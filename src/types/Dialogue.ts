@@ -113,16 +113,44 @@ export interface ConversationState {
 
 export interface Conversation {
   id: string;
-  userId: string;
-  participants: string[];
-  messages: DialogueMessage[];
+  characterId: string;
+  userId?: string;
+  participants?: string[];
+  title: string;
   scenario: string;
-  startTime: Date;
-  metadata: any;
+  messages: DialogueMessage[];
+  startedAt: Date;
+  lastMessageAt: Date;
+  isFavorite: boolean;
+  tags: string[];
+  summary: string;
+  metadata: {
+    totalMessages: number;
+    averageResponseTime: number;
+    emotionalArc: Array<{
+      messageIndex: number;
+      emotion: EmotionState;
+      timestamp: Date;
+    }>;
+    keyMoments: string[];
+  };
 }
 
 export interface ConversationHistory {
   conversations: Conversation[];
   totalCount: number;
   favoriteConversations: string[];
+}
+
+export interface ConversationSummary {
+  conversationId: string;
+  content: string;
+  keyTopics: string[];
+  emotionalHighlights: Array<{
+    emotion: EmotionState;
+    context: string;
+    timestamp: Date;
+  }>;
+  characterInsights: string[];
+  generatedAt: Date;
 }

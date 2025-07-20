@@ -116,7 +116,7 @@ class SecurityService {
       // データを暗号化
       const encrypted = CryptoJS.AES.encrypt(data, key, {
         iv: iv,
-        mode: CryptoJS.mode.GCM,
+        mode: CryptoJS.mode.CBC,
         padding: CryptoJS.pad.NoPadding,
       });
 
@@ -208,7 +208,7 @@ class SecurityService {
       // データを復号化
       const decrypted = CryptoJS.AES.decrypt(container.encryptedData, key, {
         iv: iv,
-        mode: CryptoJS.mode.GCM,
+        mode: CryptoJS.mode.CBC,
         padding: CryptoJS.pad.NoPadding,
       });
 

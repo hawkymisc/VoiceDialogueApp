@@ -23,7 +23,7 @@ describe('ttsService', () => {
     jest.clearAllMocks();
   });
 
-  describe('generateSpeech', () => {
+  describe('synthesizeSpeech', () => {
     it('should generate speech for given text', async () => {
       const mockAudioUrl = 'https://example.com/audio.mp3';
       
@@ -42,7 +42,7 @@ describe('ttsService', () => {
         voiceId: 'ja-JP-KeitaNeural',
       };
 
-      const result = await ttsService.generateSpeech(
+      const result = await ttsService.synthesizeSpeech(
         'こんにちは、元気ですか？',
         voiceSettings
       );
@@ -76,7 +76,7 @@ describe('ttsService', () => {
       };
 
       await expect(
-        ttsService.generateSpeech('Test text', voiceSettings)
+        ttsService.synthesizeSpeech('Test text', voiceSettings)
       ).rejects.toThrow('Failed to generate speech: 500 Internal Server Error');
     });
 
@@ -98,7 +98,7 @@ describe('ttsService', () => {
         voiceId: 'ja-JP-DaichiNeural',
       };
 
-      await ttsService.generateSpeech('Test text', voiceSettings);
+      await ttsService.synthesizeSpeech('Test text', voiceSettings);
 
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/tts/generate'),
@@ -487,7 +487,7 @@ describe('ttsService', () => {
       };
 
       await expect(
-        ttsService.generateSpeech('Test text', voiceSettings)
+        ttsService.synthesizeSpeech('Test text', voiceSettings)
       ).rejects.toThrow('Network error');
     });
 
@@ -508,7 +508,7 @@ describe('ttsService', () => {
       };
 
       await expect(
-        ttsService.generateSpeech('Test text', voiceSettings)
+        ttsService.synthesizeSpeech('Test text', voiceSettings)
       ).rejects.toThrow('Blob creation failed');
     });
   });
@@ -535,7 +535,7 @@ describe('ttsService', () => {
           voiceId: 'ja-JP-KeitaNeural',
         };
 
-        const result = await ttsService.generateSpeech('Test text', voiceSettings);
+        const result = await ttsService.synthesizeSpeech('Test text', voiceSettings);
 
         expect(result).toContain(format.split('/')[1]);
       }

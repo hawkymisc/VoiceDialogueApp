@@ -109,13 +109,12 @@ export const CharacterDisplay: React.FC<CharacterDisplayProps> = ({
 
   // Map character emotion to Live2D emotion
   const mapEmotionToLive2D = (emotion: EmotionState): DialogueEmotionState => {
-    switch (emotion.primary) {
-      case 'joy':
-      case 'excited':
+    switch (emotion) {
+      case 'happy':
         return 'happy';
-      case 'sadness':
+      case 'sad':
         return 'sad';
-      case 'anger':
+      case 'angry':
         return 'angry';
       case 'surprise':
         return 'surprised';
@@ -162,7 +161,7 @@ export const CharacterDisplay: React.FC<CharacterDisplayProps> = ({
 
   const getEmotionExpression = () => {
     const expressions = character.appearance.expressions;
-    switch (emotion.primary) {
+    switch (emotion) {
       case 'joy':
       case 'excited':
         return expressions.happy;
@@ -203,7 +202,7 @@ export const CharacterDisplay: React.FC<CharacterDisplayProps> = ({
     return [
       styles.characterContainer,
       isActive && styles.activeCharacter,
-      {opacity: emotion.intensity > 0.7 ? 1 : 0.8},
+      {opacity: 1.0 > 0.7 ? 1 : 0.8},
     ];
   };
 
@@ -279,13 +278,13 @@ export const CharacterDisplay: React.FC<CharacterDisplayProps> = ({
 
         {/* Emotion indicator */}
         <View style={styles.emotionIndicator}>
-          <Text style={styles.emotionText}>{emotion.primary}</Text>
+          <Text style={styles.emotionText}>{emotion}</Text>
           <View
             style={[
               styles.intensityBar,
               {
-                width: `${emotion.intensity * 100}%`,
-                backgroundColor: getEmotionColor(emotion.primary),
+                width: `${1.0 * 100}%`,
+                backgroundColor: getEmotionColor(emotion),
               },
             ]}
           />

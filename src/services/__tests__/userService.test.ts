@@ -27,13 +27,13 @@ describe('userService', () => {
         name: 'Test User',
         email: 'test@example.com',
         avatar: 'avatar.jpg',
-        createdAt: Date.now() - 86400000,
-        lastActiveAt: Date.now(),
+        createdAt: new Date(Date.now() - 86400000),
+        lastActiveAt: new Date(),
       };
 
       mockAsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify(mockProfile));
 
-      const result = await userService.getUserProfile();
+      const result = await userService.getUserProfile('user-123');
 
       expect(result).toEqual(mockProfile);
       expect(mockAsyncStorage.getItem).toHaveBeenCalledWith('userProfile');
@@ -42,7 +42,7 @@ describe('userService', () => {
     it('should return null if no profile exists', async () => {
       mockAsyncStorage.getItem.mockResolvedValueOnce(null);
 
-      const result = await userService.getUserProfile();
+      const result = await userService.getUserProfile('user-123');
 
       expect(result).toBeNull();
     });
@@ -61,8 +61,8 @@ describe('userService', () => {
         name: 'Test User',
         email: 'test@example.com',
         avatar: 'avatar.jpg',
-        createdAt: Date.now() - 86400000,
-        lastActiveAt: Date.now(),
+        createdAt: new Date(Date.now() - 86400000),
+        lastActiveAt: new Date(),
       };
 
       mockAsyncStorage.setItem.mockResolvedValueOnce(undefined);
@@ -81,8 +81,8 @@ describe('userService', () => {
         name: 'Test User',
         email: 'test@example.com',
         avatar: 'avatar.jpg',
-        createdAt: Date.now() - 86400000,
-        lastActiveAt: Date.now(),
+        createdAt: new Date(Date.now() - 86400000),
+        lastActiveAt: new Date(),
       };
 
       mockAsyncStorage.setItem.mockRejectedValueOnce(new Error('Storage error'));
@@ -160,8 +160,8 @@ describe('userService', () => {
         name: 'Test User',
         email: 'test@example.com',
         avatar: 'avatar.jpg',
-        createdAt: Date.now() - 86400000,
-        lastActiveAt: Date.now(),
+        createdAt: new Date(Date.now() - 86400000),
+        lastActiveAt: new Date(),
       };
 
       const mockPreferences: UserPreferences = {
@@ -200,8 +200,8 @@ describe('userService', () => {
         name: 'Test User',
         email: 'test@example.com',
         avatar: 'avatar.jpg',
-        createdAt: Date.now() - 86400000,
-        lastActiveAt: Date.now(),
+        createdAt: new Date(Date.now() - 86400000),
+        lastActiveAt: new Date(),
       };
 
       const mockPreferences: UserPreferences = {
@@ -340,8 +340,8 @@ describe('userService', () => {
         name: 'Test User',
         email: 'test@example.com',
         avatar: 'avatar.jpg',
-        createdAt: Date.now() - 86400000,
-        lastActiveAt: Date.now(),
+        createdAt: new Date(Date.now() - 86400000),
+        lastActiveAt: new Date(),
       };
 
       const mockPreferences: UserPreferences = {
@@ -498,8 +498,8 @@ describe('userService', () => {
         name: 'Test User',
         email: 'test@example.com',
         avatar: 'avatar.jpg',
-        createdAt: Date.now() - 86400000,
-        lastActiveAt: Date.now(),
+        createdAt: new Date(Date.now() - 86400000),
+        lastActiveAt: new Date(),
       };
 
       const mockPreferences: UserPreferences = {
@@ -527,8 +527,8 @@ describe('userService', () => {
         name: 'Test User',
         email: 'invalid-email', // Invalid email format
         avatar: 'avatar.jpg',
-        createdAt: Date.now() - 86400000,
-        lastActiveAt: Date.now(),
+        createdAt: new Date(Date.now() - 86400000),
+        lastActiveAt: new Date(),
       };
 
       await expect(
