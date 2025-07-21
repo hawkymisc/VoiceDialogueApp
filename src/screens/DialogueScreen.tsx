@@ -15,9 +15,10 @@ import {RootState} from '../store';
 import {CharacterType} from '../types/Character';
 import {DialogueMessage} from '../types/Dialogue';
 import {EnhancedDialogueInterface, AudioController} from '../components';
-import {openaiService} from '../services/openaiService';
-import {ttsService} from '../services/ttsService';
+import {llmService} from '../services/llmService';
+import {ttsProviderService} from '../services/ttsProviderService';
 import {audioService} from '../services/audioService';
+import {configService} from '../services/configService';
 
 type DialogueScreenRouteProp = RouteProp<
   {Dialogue: {characterId: CharacterType; userId: string}},
@@ -59,30 +60,53 @@ export const DialogueScreen: React.FC = () => {
       setIsInitializing(true);
       setInitError(null);
 
-      // Check if OpenAI service is initialized
-      if (!openaiService.getInitializationStatus()) {
-        throw new Error('OpenAI サービスが初期化されていません。API キーを確認してください。');
+      // Load configuration
+      const config = configService.loadConfig();
+      const status = configService.getProviderStatus();
+
+      console.log('Initializing services with config:', status);
+
+      // Initialize LLM service
+      if (!llmService.getInitializationStatus()) {
+        if (status.llm.configured) {
+          await llmService.initialize(config.llm);
+        } else {
+          console.warn('LLM service not configured. Please check your API keys.');
+        }
       }
 
-      // Check if TTS service is initialized
-      if (!ttsService.getInitializationStatus()) {
-        console.warn('TTS サービスが初期化されていません。音声機能は利用できません。');
+      // Initialize TTS service
+      if (!ttsProviderService.getInitializationStatus()) {
+        if (status.tts.configured) {
+          await ttsProviderService.initialize(config.tts);
+        } else {
+          console.warn('TTS service not configured, using Web Speech API as fallback');
+          await ttsProviderService.initialize({
+            provider: 'web-speech',
+            webSpeech: { lang: 'ja-JP', rate: 1.0, pitch: 1.0 }
+          });
+        }
       }
 
-      // Test services
-      const openaiTest = await openaiService.testConnection();
-      if (!openaiTest) {
-        throw new Error('OpenAI API への接続に失敗しました。');
+      // Check service status
+      if (!llmService.getInitializationStatus()) {
+        throw new Error(
+          `${config.llm.provider} サービスが初期化されていません。API キーを確認してください。\n\n` +
+          configService.generateExampleEnv()
+        );
       }
 
       console.log('Services initialized successfully');
+      console.log('LLM Provider:', llmService.getCurrentProvider());
+      console.log('TTS Provider:', ttsProviderService.getCurrentProvider());
+
     } catch (error) {
       console.error('Service initialization failed:', error);
       setInitError(error instanceof Error ? error.message : 'サービスの初期化に失敗しました');
       
       Alert.alert(
-        'エラー',
-        'サービスの初期化に失敗しました。アプリを再起動してください。',
+        'サービス初期化エラー',
+        error instanceof Error ? error.message : 'サービスの初期化に失敗しました。設定を確認してください。',
         [
           {
             text: '戻る',

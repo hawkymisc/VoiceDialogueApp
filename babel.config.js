@@ -20,5 +20,26 @@ module.exports = {
         '@babel/preset-typescript',
       ],
     },
+    web: {
+      presets: [
+        ['@babel/preset-env', {
+          targets: {
+            browsers: ['last 2 versions', 'not dead'],
+          },
+          useBuiltIns: 'usage',
+          corejs: 3,
+        }],
+        '@babel/preset-react',
+        '@babel/preset-typescript',
+      ],
+      plugins: [
+        ['@babel/plugin-transform-runtime', {
+          regenerator: true,
+        }],
+        ['@babel/plugin-proposal-class-properties', { loose: true }],
+        ['@babel/plugin-transform-private-methods', { loose: true }],
+        ['@babel/plugin-transform-private-property-in-object', { loose: true }],
+      ],
+    },
   },
 };

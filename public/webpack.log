@@ -1,0 +1,66 @@
+
+> voice-dialogue-app@0.0.1 web
+> webpack serve --config webpack.config.js
+
+<i> [webpack-dev-server] Project is running at:
+<i> [webpack-dev-server] Loopback: http://localhost:3001/, http://[::1]:3001/
+<i> [webpack-dev-server] On Your Network (IPv4): http://192.168.40.111:3001/
+<i> [webpack-dev-server] Content not from webpack is served from '/Users/hwaka/Projects/ai-bl-interaction/VoiceDialogueApp/public' directory
+<i> [webpack-dev-server] 404s will fallback to '/index.html'
+assets by path assets/*.png 1.09 KiB
+  asset assets/back-icon-mask.png 913 bytes [emitted] [from: node_modules/@react-navigation/elements/lib/module/assets/back-icon-mask.png] (auxiliary name: main)
+  asset assets/back-icon.png 207 bytes [emitted] [from: node_modules/@react-navigation/elements/lib/module/assets/back-icon.png] (auxiliary name: main)
+asset bundle.js 6.14 MiB [emitted] (name: main)
+asset index.html 612 bytes [emitted]
+runtime modules 26.5 KiB 13 modules
+orphan modules 6.7 KiB [orphan] 9 modules
+modules by path ./node_modules/ 4.21 MiB 865 modules
+modules by path ./src/ 751 KiB
+  modules by path ./src/components/ 369 KiB 19 modules
+  modules by path ./src/services/*.ts 245 KiB 12 modules
+  modules by path ./src/store/ 60.9 KiB 9 modules
+  modules by path ./src/mocks/*.js 17.2 KiB 7 modules
+  modules by path ./src/screens/ 22 KiB 6 modules
+  modules by path ./src/data/*.ts 19 KiB 2 modules
+  ./src/hooks/useStorage.ts 17.9 KiB [built] [code generated]
++ 11 modules
+webpack 5.100.2 compiled successfully in 2102 ms
+Error: Can't set headers after they are sent.
+    at SendStream.headersAlreadySent (/Users/hwaka/Projects/ai-bl-interaction/VoiceDialogueApp/node_modules/send/index.js:386:13)
+    at SendStream.send (/Users/hwaka/Projects/ai-bl-interaction/VoiceDialogueApp/node_modules/send/index.js:612:10)
+    at /Users/hwaka/Projects/ai-bl-interaction/VoiceDialogueApp/node_modules/send/index.js:769:12
+    at FSReqCallback.oncomplete (node:fs:189:5)
+assets by status 1.69 KiB [cached] 3 assets
+assets by status 6.14 MiB [emitted]
+  asset bundle.js 6.14 MiB [emitted] (name: main)
+  asset main.076db1b06785110fd2a7.hot-update.js 861 bytes [emitted] [immutable] [hmr] (name: main)
+  asset main.076db1b06785110fd2a7.hot-update.json 28 bytes [emitted] [immutable] [hmr]
+Entrypoint main 6.14 MiB (1.09 KiB) = bundle.js 6.14 MiB main.076db1b06785110fd2a7.hot-update.js 861 bytes 2 auxiliary assets
+cached modules 4.22 MiB [cached] 883 modules
+runtime modules 26.5 KiB 13 modules
+javascript modules 753 KiB
+  modules by path ./src/ 751 KiB
+    modules by path ./src/components/ 369 KiB 19 modules
+    modules by path ./src/services/*.ts 245 KiB 12 modules
+    modules by path ./src/store/ 60.9 KiB 9 modules
+    modules by path ./src/mocks/*.js 17.2 KiB 7 modules
+    modules by path ./src/screens/ 22 KiB 6 modules
+    modules by path ./src/data/*.ts 19 KiB
+      ./src/data/characters.ts 8.98 KiB [built]
+      ./src/data/scenarios.ts 10 KiB [built]
+    ./src/hooks/useStorage.ts 17.9 KiB [built]
+  ./index.web.js 404 bytes [built]
+  ./App.tsx 1.87 KiB [built]
+webpack 5.100.2 compiled successfully in 1450 ms
+assets by status 1.09 KiB [cached] 2 assets
+assets by status 6.14 MiB [emitted]
+  assets by path *.js 6.14 MiB
+    asset bundle.js 6.14 MiB [emitted] (name: main)
+    asset main.daf21f5fdd9112ab4a99.hot-update.js 861 bytes [emitted] [immutable] [hmr] (name: main)
+  asset index.html 612 bytes [emitted]
+  asset main.daf21f5fdd9112ab4a99.hot-update.json 28 bytes [emitted] [immutable] [hmr]
+Entrypoint main 6.14 MiB (1.09 KiB) = bundle.js 6.14 MiB main.daf21f5fdd9112ab4a99.hot-update.js 861 bytes 2 auxiliary assets
+cached modules 4.96 MiB [cached] 941 modules
+runtime modules 26.5 KiB 13 modules
+webpack 5.100.2 compiled successfully in 105 ms
+<i> [webpack-dev-server] Gracefully shutting down. To force exit, press ^C again. Please wait...

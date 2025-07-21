@@ -7,6 +7,17 @@ import {createStackNavigator} from '@react-navigation/stack';
 import {store} from './src/store';
 import {HomeScreen, CharacterScreen, DialogueScreen} from './src/screens';
 
+// Web environment safety check
+if (typeof window !== 'undefined') {
+  // Initialize React Navigation for web
+  try {
+    const { enableScreens } = require('react-native-screens');
+    enableScreens(false); // Disable for web
+  } catch (error) {
+    console.warn('React Native Screens not available in web environment');
+  }
+}
+
 const Stack = createStackNavigator();
 
 const App: React.FC = () => {
